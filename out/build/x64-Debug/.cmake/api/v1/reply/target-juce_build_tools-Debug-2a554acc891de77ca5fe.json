@@ -1,0 +1,77 @@
+{
+	"abstract" : true,
+	"backtrace" : 3,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"_juce_add_interface_library",
+			"juce_add_module",
+			"target_link_libraries"
+		],
+		"files" : 
+		[
+			"JUCE/extras/Build/CMake/JUCEModuleSupport.cmake",
+			"JUCE/extras/Build/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 2,
+				"file" : 1,
+				"line" : 33,
+				"parent" : 0
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 505,
+				"parent" : 1
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 98,
+				"parent" : 2
+			},
+			{
+				"command" : 3,
+				"file" : 0,
+				"line" : 659,
+				"parent" : 1
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "juce_build_tools::@c4d79e0aa2f49993b96d",
+	"interfaceCompileDependencies" : 
+	[
+		{
+			"backtrace" : 4,
+			"id" : "juce_gui_basics::@fa2799be4f27ec528a31"
+		}
+	],
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 4,
+			"id" : "juce_gui_basics::@fa2799be4f27ec528a31"
+		}
+	],
+	"name" : "juce_build_tools",
+	"paths" : 
+	{
+		"build" : "JUCE/extras/Build",
+		"source" : "JUCE/extras/Build"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

@@ -1,0 +1,18 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "My Amp Sim.exe (MyAmpSim_artefacts\\Debug\\Standalone\\My Amp Sim.exe)",
+      "name": "My Amp Sim.exe (MyAmpSim_artefacts\\Debug\\Standalone\\My Amp Sim.exe)"
+    },
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "My Amp Sim.exe (MyAmpSim_artefacts\\Debug\\Standalone\\My Amp Sim.exe)",
+      "name": "My Amp Sim.exe (MyAmpSim_artefacts\\Debug\\Standalone\\My Amp Sim.exe)"
+    }
+  ]
+}

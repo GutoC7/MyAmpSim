@@ -1,0 +1,40 @@
+# ninja log v6
+13	92	7992907174610214	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	6a258aa0a064ee3a
+104	154	7992907175940615	MyAmpSim_artefacts/JuceLibraryCode/MyAmpSim_resources.rc	7fc3d9dbcfdd176
+104	154	7992907175940615	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/MyAmpSim_artefacts/JuceLibraryCode/MyAmpSim_resources.rc	7fc3d9dbcfdd176
+97	229	7992907175880575	MyAmpSim_artefacts/JuceLibraryCode/JuceHeader.h	14db34ac1da6c500
+97	229	7992907175880575	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/MyAmpSim_artefacts/JuceLibraryCode/JuceHeader.h	14db34ac1da6c500
+154	362	7992907176020623	CMakeFiles/MyAmpSim_rc_lib.dir/MyAmpSim_artefacts/JuceLibraryCode/MyAmpSim_resources.rc.res	922ef709c260c5ca
+290	400	7992907177379055	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_processors_headless/juce_audio_processors_headless_ara.cpp.obj	5a04babbb92f9605
+275	406	7992907177219039	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_core/juce_core_CompilationTime.cpp.obj	8fd1773a1df9f1e7
+302	412	7992907177489055	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_processors_headless/juce_audio_processors_headless_lv2_libs.cpp.obj	122398e85a1acf87
+260	527	7992907177068989	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_graphics/juce_graphics_Sheenbidi.c.obj	7838d60d814f7929
+406	560	7992907178534244	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX.cpp.obj	4feed976fe0658fe
+528	674	7992907179759439	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_ARA.cpp.obj	5db3cd88c99870d6
+413	681	7992907178604260	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_AAX_utils.cpp.obj	4e88a4725d9d8246
+561	747	7992907180084576	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_LV2.cpp.obj	b3c8dc6357321fae
+681	836	7992907181289768	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_Unity.cpp.obj	79c9d663b6346ffc
+747	1629	7992907181949833	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST2.cpp.obj	12d92bca04337277
+836	1644	7992907182844953	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_VST3.cpp.obj	351c1fcccea5b9e2
+280	3929	7992907177269044	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_data_structures/juce_data_structures.cpp.obj	2286370d4a2ee800
+265	5056	7992907177119062	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_events/juce_events.cpp.obj	20c461e461130409
+307	5719	7992907177539049	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_basics/juce_audio_basics.cpp.obj	2521d1ea21af7e0f
+400	6616	7992907178474242	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_dsp/juce_dsp.cpp.obj	e3f293706efadd11
+270	7539	7992907177169040	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_core/juce_core.cpp.obj	ce91e56908388908
+316	7585	7992907177639044	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_formats/juce_audio_formats.cpp.obj	8439c27b79be69b3
+285	8046	7992907177319037	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_processors_headless/juce_audio_processors_headless.cpp.obj	1da83d42d41e406e
+674	9653	7992907181219775	CMakeFiles/MyAmpSim_Standalone.dir/JUCE/modules/juce_audio_plugin_client/juce_audio_plugin_client_Standalone.cpp.obj	546a8ec5c0df864d
+238	9859	7992907176853881	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_gui_extra/juce_gui_extra.cpp.obj	561b1f2cd52bc34a
+233	9889	7992907176804176	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_processors/juce_audio_processors.cpp.obj	93704ddbc67cf5a0
+312	10325	7992907177589057	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_utils/juce_audio_utils.cpp.obj	77a38bf42085166b
+363	10418	7992907178104239	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_audio_devices/juce_audio_devices.cpp.obj	43644d9c77a7f530
+250	13177	7992907176973932	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_graphics/juce_graphics.cpp.obj	91acf9a360b6e398
+255	13972	7992907177023938	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_graphics/juce_graphics_Harfbuzz.cpp.obj	e87debfe4da61a8d
+242	18318	7992907176893996	CMakeFiles/MyAmpSim.dir/JUCE/modules/juce_gui_basics/juce_gui_basics.cpp.obj	6088c2921e8a0ccb
+34	113	7992907872597212	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	6a258aa0a064ee3a
+32	115	7992913557376613	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	6a258aa0a064ee3a
+175	4715	7992913558796907	CMakeFiles/MyAmpSim.dir/Source/PluginProcessor.cpp.obj	405e82b4f485c654
+4716	5385	7992913604216622	MyAmpSim_artefacts/Debug/My Amp Sim_SharedCode.lib	9ccaeb965b56be3d
+5385	7750	7992913610906619	MyAmpSim_artefacts/Debug/Standalone/My Amp Sim.exe	58e308e66349e5ea
+34	114	7992922701915080	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	6a258aa0a064ee3a
+27	109	7992923272956802	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	6a258aa0a064ee3a
