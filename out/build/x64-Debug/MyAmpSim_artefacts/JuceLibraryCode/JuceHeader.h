@@ -41,7 +41,7 @@
 namespace ProjectInfo
 {
     const char* const  projectName    = "My Amp Sim";
-    const char* const  companyName    = "MyName";
+    const char* const  companyName    = "GutoC7";
     const char* const  versionString  = "0.0.1";
     const int          versionNumber  =  0x1;
 }

@@ -1,6 +1,7 @@
 #include <JuceHeader.h>
 #include <juce_dsp/juce_dsp.h>
 #include "AmpMath.h"
+#include "BinaryData.h"
 
 // --- THE PROCESSOR (Audio Engine) ---
 class MyAmpSimAudioProcessor : public juce::AudioProcessor
@@ -36,12 +37,14 @@ public:
         spec.numChannels = getTotalNumOutputChannels();
         cabSim.prepare(spec);
 
-        juce::File file("C:/Documents/GitHub/MyAmpSim/cabinet.wav");
+		const void* cabData = BinaryData::cabinet_wav;
+		int cabSize = BinaryData::cabinet_wavSize;
 
-        if (file.existsAsFile())
+        if (cabData != nullptr && cabSize > 0)
         {
-            cabSim.loadImpulseResponse(file, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::yes, 0);
+			cabSim.loadImpulseResponse(cabData, cabSize, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::yes, 0);
         }
+
         // Setup Time Effects
         lfo.reset();
         delayLeft.prepare(sampleRate);
@@ -155,7 +158,7 @@ public:
         g.fillAll(juce::Colours::darkgrey);
         g.setColour(juce::Colours::white);
         g.setFont(20.0f);
-        g.drawFittedText("My Pro Amp Sim", getLocalBounds().removeFromTop(30), juce::Justification::centred, 1);
+        g.drawFittedText("My Amateur Amp Sim", getLocalBounds().removeFromTop(30), juce::Justification::centred, 1);
 
         g.drawText("Drive", 40, 50, 100, 100, juce::Justification::centred);
         g.drawText("Tremolo", 170, 50, 100, 100, juce::Justification::centred);

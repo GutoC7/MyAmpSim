@@ -1599,8 +1599,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-qz0pp1"
-      binary: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-qz0pp1"
+      source: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-bdg72w"
+      binary: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-bdg72w"
     cmakeVariables:
       CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS"
       CMAKE_C_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1609,11 +1609,11 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-qz0pp1'
+        Change Dir: 'C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-bdg72w'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_32b3a
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo -D_MBCS  /DWIN32 /D_WINDOWS  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_32b3a.dir\\CMakeCCompilerABI.c.obj /FdCMakeFiles\\cmTC_32b3a.dir\\ /FS -c "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
-        [2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_32b3a.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_32b3a.dir\\CMakeCCompilerABI.c.obj  /out:cmTC_32b3a.exe /implib:cmTC_32b3a.lib /pdb:cmTC_32b3a.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_4cca2
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo -D_MBCS  /DWIN32 /D_WINDOWS  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_4cca2.dir\\CMakeCCompilerABI.c.obj /FdCMakeFiles\\cmTC_4cca2.dir\\ /FS -c "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-4.2\\Modules\\CMakeCCompilerABI.c"
+        [2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_4cca2.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_4cca2.dir\\CMakeCCompilerABI.c.obj  /out:cmTC_4cca2.exe /implib:cmTC_4cca2.lib /pdb:cmTC_4cca2.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -1653,8 +1653,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-umv5z9"
-      binary: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-umv5z9"
+      source: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-foi2jt"
+      binary: "C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-foi2jt"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/Zi /Ob0 /Od /RTC1"
@@ -1664,11 +1664,11 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-umv5z9'
+        Change Dir: 'C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeScratch/TryCompile-foi2jt'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_63b02
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -D_MBCS  /DWIN32 /D_WINDOWS /EHsc  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_63b02.dir\\CMakeCXXCompilerABI.cpp.obj /FdCMakeFiles\\cmTC_63b02.dir\\ /FS -c "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
-        [2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_63b02.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_63b02.dir\\CMakeCXXCompilerABI.cpp.obj  /out:cmTC_63b02.exe /implib:cmTC_63b02.lib /pdb:cmTC_63b02.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_eac1f
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -D_MBCS  /DWIN32 /D_WINDOWS /EHsc  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_eac1f.dir\\CMakeCXXCompilerABI.cpp.obj /FdCMakeFiles\\cmTC_eac1f.dir\\ /FS -c "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+        [2/2] C:\\WINDOWS\\system32\\cmd.exe /C "cd . && "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe" -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_eac1f.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_eac1f.dir\\CMakeCXXCompilerABI.cpp.obj  /out:cmTC_eac1f.exe /implib:cmTC_eac1f.lib /pdb:cmTC_eac1f.pdb /version:0.0 /machine:x64  /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -1718,10 +1718,10 @@ events:
       stdout: |
         Change Dir: 'C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/CMakeTmp'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_a8d71
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -D_MBCS  /DWIN32 /D_WINDOWS /EHsc  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_a8d71.dir\\juce_runtime_arch_detection.cpp.obj /FdCMakeFiles\\cmTC_a8d71.dir\\ /FS -c C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\JUCE\\extras\\Build\\CMake\\juce_runtime_arch_detection.cpp
-        FAILED: CMakeFiles/cmTC_a8d71.dir/juce_runtime_arch_detection.cpp.obj 
-        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -D_MBCS  /DWIN32 /D_WINDOWS /EHsc  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_a8d71.dir\\juce_runtime_arch_detection.cpp.obj /FdCMakeFiles\\cmTC_a8d71.dir\\ /FS -c C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\JUCE\\extras\\Build\\CMake\\juce_runtime_arch_detection.cpp
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/CommonExtensions/Microsoft/CMake/Ninja/ninja.exe" -v cmTC_b78f4
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -D_MBCS  /DWIN32 /D_WINDOWS /EHsc  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_b78f4.dir\\juce_runtime_arch_detection.cpp.obj /FdCMakeFiles\\cmTC_b78f4.dir\\ /FS -c C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\JUCE\\extras\\Build\\CMake\\juce_runtime_arch_detection.cpp
+        FAILED: CMakeFiles/cmTC_b78f4.dir/juce_runtime_arch_detection.cpp.obj 
+        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP -D_MBCS  /DWIN32 /D_WINDOWS /EHsc  /Zi /Ob0 /Od /RTC1 -MDd /showIncludes /FoCMakeFiles\\cmTC_b78f4.dir\\juce_runtime_arch_detection.cpp.obj /FdCMakeFiles\\cmTC_b78f4.dir\\ /FS -c C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\JUCE\\extras\\Build\\CMake\\juce_runtime_arch_detection.cpp
         C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\JUCE\\extras\\Build\\CMake\\juce_runtime_arch_detection.cpp(56): fatal error C1189: #error:  JUCE_ARCH x86_64
         ninja: build stopped: subcommand failed.
         

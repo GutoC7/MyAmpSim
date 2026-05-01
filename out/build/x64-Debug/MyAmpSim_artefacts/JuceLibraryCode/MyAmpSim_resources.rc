@@ -15,7 +15,7 @@ BEGIN
   BEGIN
     BLOCK "040904E4"
     BEGIN
-      VALUE "CompanyName",  "MyName\0"
+      VALUE "CompanyName",  "GutoC7\0"
       VALUE "FileDescription",  "My Amp Sim\0"
       VALUE "FileVersion",  "0.0.1\0"
       VALUE "ProductName",  "My Amp Sim\0"
