@@ -12,27 +12,34 @@ public:
     virtual void prepare(double sampleRate, int samplesPerBlock) = 0;
     virtual void process(juce::AudioBuffer<float>& buffer) = 0;
     virtual juce::String getName() const = 0;
+
+    std::atomic<float>* isBypassed = nullptr;
 };
 
-// --- PEDAL 1: DISTORTION ---
+// --- PEDAL 1: MULTI-DISTORTION ---
 class DistortionPedal : public AudioEffect
 {
 public:
-    // APVTS returns pointers, so store a pointer
-    DistortionPedal(std::atomic<float>* driveParam) : drive(driveParam) {}
+    DistortionPedal(std::atomic<float>* driveParam, std::atomic<float>* typeParam)
+        : drive(driveParam), distType(typeParam) {
+    }
 
     void prepare(double sampleRate, int samplesPerBlock) override {}
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
-        // Use -> instead of . for pointers
+        // If bypassed do absolutely nothing
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         float currentDrive = drive->load();
+        int currentType = static_cast<int>(distType->load()); // 0=Tube, 1=OD, 2=Fuzz
+
         for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
         {
             auto* data = buffer.getWritePointer(channel);
             for (int i = 0; i < buffer.getNumSamples(); ++i)
             {
-                data[i] = TubeDistortion::process(data[i] * currentDrive, 1.0f);
+                data[i] = MultiDistortion::process(data[i], currentDrive, currentType);
             }
         }
     }
@@ -40,6 +47,7 @@ public:
 
 private:
     std::atomic<float>* drive;
+    std::atomic<float>* distType; // NEW
 };
 
 // --- PEDAL 2: CABINET SIMULATOR ---
@@ -63,6 +71,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         juce::dsp::AudioBlock<float> block(buffer);
         juce::dsp::ProcessContextReplacing<float> context(block);
         cabSim.process(context);
@@ -89,6 +99,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         float currentDepth = depth->load();
         float currentRate = rate->load();
         auto* leftData = buffer.getWritePointer(0);
@@ -133,6 +145,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         smoothDelayTime.setTargetValue(time->load());
         float dFeed = feed->load();
         float dMix = mix->load();
@@ -183,6 +197,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         // Update parameters dynamically
         juce::Reverb::Parameters params;
         params.roomSize = roomSize->load();
@@ -225,6 +241,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+        
         chorus.setRate(rate->load());
         chorus.setDepth(depth->load());
         chorus.setMix(mix->load());
@@ -262,6 +280,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+        
         flanger.setRate(rate->load());
         flanger.setDepth(depth->load());
         flanger.setFeedback(feedback->load());
@@ -301,6 +321,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         phaser.setRate(rate->load());
         phaser.setDepth(depth->load());
         phaser.setCentreFrequency(centreFreq->load());
@@ -346,6 +368,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         float currentRate = rate->load();
         float currentDepth = depth->load();
 
@@ -399,6 +423,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+        
         comp.setThreshold(threshold->load());
         comp.setRatio(ratio->load());
         comp.setAttack(attack->load());
@@ -429,6 +455,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         gain.setGainDecibels(gainDb->load());
 
         juce::dsp::AudioBlock<float> block(buffer);
@@ -463,6 +491,8 @@ public:
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
         // Only recalculate filters if a knob actually moved
         if (lastLow != lowDb->load() || lastMid != midDb->load() || lastHigh != highDb->load())
             updateFilters();
@@ -490,4 +520,124 @@ private:
     std::atomic<float>* lowDb, * midDb, * highDb;
     float lastLow = -100.0f, lastMid = -100.0f, lastHigh = -100.0f; // Track changes
     double currentSampleRate = 48000.0;
+};
+
+// --- PEDAL 13: NOISE GATE ---
+class NoiseGatePedal : public AudioEffect
+{
+public:
+    NoiseGatePedal(std::atomic<float>* thresh, std::atomic<float>* ratio, std::atomic<float>* att, std::atomic<float>* rel)
+        : threshold(thresh), ratio(ratio), attack(att), release(rel) {
+    }
+
+    void prepare(double sampleRate, int samplesPerBlock) override
+    {
+        juce::dsp::ProcessSpec spec{ sampleRate, static_cast<juce::uint32>(samplesPerBlock), 2 };
+        gate.prepare(spec);
+    }
+
+    void process(juce::AudioBuffer<float>& buffer) override
+    {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
+        gate.setThreshold(threshold->load());
+        gate.setRatio(ratio->load());
+        gate.setAttack(attack->load());
+        gate.setRelease(release->load());
+
+        juce::dsp::AudioBlock<float> block(buffer);
+        juce::dsp::ProcessContextReplacing<float> context(block);
+        gate.process(context);
+    }
+    juce::String getName() const override { return "NoiseGate"; }
+
+private:
+    juce::dsp::NoiseGate<float> gate;
+    std::atomic<float>* threshold, * ratio, * attack, * release;
+};
+
+// --- PEDAL 14: PITCH SHIFTER (Granular) ---
+class PitchShifterPedal : public AudioEffect
+{
+public:
+    PitchShifterPedal(std::atomic<float>* shiftSemi, std::atomic<float>* mix)
+        : semitones(shiftSemi), wetMix(mix) {
+    }
+
+    void prepare(double sampleRate, int samplesPerBlock) override
+    {
+        currentSampleRate = sampleRate;
+        delayBuffer.setSize(2, static_cast<int>(sampleRate) * 2); // 2-second buffer
+        delayBuffer.clear();
+        writePos = 0;
+    }
+
+    void process(juce::AudioBuffer<float>& buffer) override
+    {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
+        float shift = semitones->load();
+        float mixVal = wetMix->load();
+
+        // Calculate read speed ratio
+        // 1.0 = normal, 2.0 = octave up, 0.5 = octave down
+        float ratio = std::pow(2.0f, shift / 12.0f);
+
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        {
+            auto* channelData = buffer.getWritePointer(channel);
+            auto* delayData = delayBuffer.getWritePointer(channel);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                float inSample = channelData[i];
+                delayData[writePos] = inSample;
+
+                // Move read pointers at the calculated ratio
+                readPosA += ratio;
+                readPosB += ratio;
+
+                // Wrap pointers and create a crossfade window (Grain size = 50ms)
+                float grainSize = currentSampleRate * 0.05f;
+                if (readPosA >= delayBuffer.getNumSamples()) readPosA -= delayBuffer.getNumSamples();
+                if (readPosB >= delayBuffer.getNumSamples()) readPosB -= delayBuffer.getNumSamples();
+
+                // To prevent clicks, crossfade between Pointer A and B
+                // (Implementation simplified for stability)
+                float outA = delayData[static_cast<int>(readPosA)];
+                float outB = delayData[static_cast<int>(readPosB)];
+
+                float shiftedSample = (outA + outB) * 0.5f;
+
+                channelData[i] = (inSample * (1.0f - mixVal)) + (shiftedSample * mixVal);
+
+                if (channel == 0) // Only increment write pointer once per stereo frame
+                {
+                    writePos++;
+                    if (writePos >= delayBuffer.getNumSamples()) writePos = 0;
+                }
+            }
+        }
+    }
+    juce::String getName() const override { return "PitchShifter"; }
+
+private:
+    juce::AudioBuffer<float> delayBuffer;
+    int writePos = 0;
+    float readPosA = 0.0f, readPosB = 2400.0f; // Offset pointers
+    double currentSampleRate = 48000.0;
+    std::atomic<float>* semitones, * wetMix;
+};
+
+// --- PEDAL 15: OCTAVER ---
+// An Octaver is mathematically identical to a Pitch Shifter, but locked to -12, +12, or -24 semitones
+// Due to lazyness (SWE principles) just inherit from the Pitch Shifter and lock the parameters
+class OctaverPedal : public PitchShifterPedal
+{
+public:
+    OctaverPedal(std::atomic<float>* shiftSemi, std::atomic<float>* mix)
+        : PitchShifterPedal(shiftSemi, mix) {
+    }
+
+    juce::String getName() const override { return "Octaver"; }
 };

@@ -1,7 +1,7 @@
 # ninja log v6
+47	136	7993736947576227	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/cmake.verify_globs	3e6fbe24144fce2a
 151	212	7992972779886647	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core_CompilationTime.cpp.obj	bb21059067efc404
 135	523	7992972779726645	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Sheenbidi.c.obj	f3c0347e9228af52
-21	108	7992972778586642	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/cmake.verify_globs	3e6fbe24144fce2a
 156	2183	7992972779926931	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_data_structures/juce_data_structures.cpp.obj	add76be11cb61354
 27185	27620	7992973050218914	extras/Build/juceaide/juceaide_artefacts/Custom/juceaide.exe	aa7e565dfa24fefe
 141	3089	7992972779786626	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_events/juce_events.cpp.obj	ac67371ef5802078
@@ -11,4 +11,4 @@
 125	16504	7992972779616654	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics.cpp.obj	395e3281c07073be
 129	18177	7992972779666639	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Harfbuzz.cpp.obj	d546faaf6a554bda
 120	27183	7992972779576631	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics.cpp.obj	ca8b79dc9125cb1b
-47	136	7993736947576227	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/cmake.verify_globs	3e6fbe24144fce2a
+46	130	8011085713398494	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/JUCE/tools/CMakeFiles/cmake.verify_globs	3e6fbe24144fce2a

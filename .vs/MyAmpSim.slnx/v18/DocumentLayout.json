@@ -7,12 +7,15 @@
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\PluginProcessor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\atomic||{3B902123-F8A7-4915-9F01-361F908088D0}|"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\CMakeLists.txt||{8B382828-6202-11D1-8870-0000F87579D2}",
@@ -30,7 +33,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 4,
+          "SelectedChildIndex": 3,
           "Children": [
             {
               "$type": "Bookmark",
@@ -38,20 +41,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "Effects.h",
-              "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
-              "RelativeDocumentMoniker": "Source\\Effects.h",
-              "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
-              "RelativeToolTip": "Source\\Effects.h",
-              "ViewState": "AgIAANgBAAAAAAAAAAAiwNEBAAALAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-05-01T20:16:48.522Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "CMakeLists.txt",
               "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\CMakeLists.txt",
               "RelativeDocumentMoniker": "CMakeLists.txt",
@@ -63,7 +53,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "launch.vs.json",
               "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\.vs\\launch.vs.json",
               "RelativeDocumentMoniker": ".vs\\launch.vs.json",
@@ -82,7 +72,7 @@
               "RelativeDocumentMoniker": "Source\\PluginProcessor.cpp",
               "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.cpp",
               "RelativeToolTip": "Source\\PluginProcessor.cpp",
-              "ViewState": "AgIAAHUBAAAAAAAAAAAAACsBAAAsAAAAAAAAAA==",
+              "ViewState": "AgIAAMIAAAAAAAAAAAAAAK0BAAADAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-04-30T21:59:45.99Z",
               "EditorCaption": ""
@@ -90,15 +80,39 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "atomic",
+              "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\atomic",
+              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\atomic",
+              "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\atomic",
+              "RelativeToolTip": "..\\..\\..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\include\\atomic",
+              "ViewState": "AgIAAI4DAAAAAAAAAAAQwJkDAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2026-05-22T00:01:41.817Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Effects.h",
+              "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
+              "RelativeDocumentMoniker": "Source\\Effects.h",
+              "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
+              "RelativeToolTip": "Source\\Effects.h",
+              "ViewState": "AgIAAAECAAAAAAAAAAAwwA4CAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-01T20:16:48.522Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "AmpMath.h",
               "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h",
               "RelativeDocumentMoniker": "Source\\AmpMath.h",
               "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h",
               "RelativeToolTip": "Source\\AmpMath.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAD4AAAAVAAAAAAAAAA==",
+              "ViewState": "AgIAAHgAAAAAAAAAAAAwwIAAAAANAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-04-30T21:59:10.369Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-30T21:59:10.369Z"
             }
           ]
         }
