@@ -70,3 +70,15 @@
 168	5451	8011795498339771	CMakeFiles/MyAmpSim.dir/Source/PluginProcessor.cpp.obj	d881168ee9f2dbea
 5452	6142	8011795551189783	MyAmpSim_artefacts/Debug/My Amp Sim_SharedCode.lib	fef3be18ae6bcf15
 6142	6829	8011795558089780	MyAmpSim_artefacts/Debug/Standalone/My Amp Sim.exe	a6a7b2abe7094afe
+18	119	8011820084139315	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	45b6ec811fb13170
+174	5595	8011820085709580	CMakeFiles/MyAmpSim.dir/Source/PluginProcessor.cpp.obj	d881168ee9f2dbea
+5596	6931	8011820139919613	MyAmpSim_artefacts/Debug/My Amp Sim_SharedCode.lib	fef3be18ae6bcf15
+6931	8228	8011820153269304	MyAmpSim_artefacts/Debug/Standalone/My Amp Sim.exe	a6a7b2abe7094afe
+34	126	8011832515075224	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	45b6ec811fb13170
+184	5558	8011832516574920	CMakeFiles/MyAmpSim.dir/Source/PluginProcessor.cpp.obj	d881168ee9f2dbea
+5558	6209	8011832570315573	MyAmpSim_artefacts/Debug/My Amp Sim_SharedCode.lib	fef3be18ae6bcf15
+6210	7505	8011832576829158	MyAmpSim_artefacts/Debug/Standalone/My Amp Sim.exe	a6a7b2abe7094afe
+54	151	8011835751829157	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Debug/CMakeFiles/cmake.verify_globs	45b6ec811fb13170
+207	5379	8011835753349148	CMakeFiles/MyAmpSim.dir/Source/PluginProcessor.cpp.obj	d881168ee9f2dbea
+5380	6072	8011835805078855	MyAmpSim_artefacts/Debug/My Amp Sim_SharedCode.lib	fef3be18ae6bcf15
+6072	6792	8011835812008856	MyAmpSim_artefacts/Debug/Standalone/My Amp Sim.exe	a6a7b2abe7094afe

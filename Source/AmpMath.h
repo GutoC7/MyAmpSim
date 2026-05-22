@@ -26,16 +26,43 @@ class SimpleOscillator
 {
 public:
     SimpleOscillator() = default;
-    float process(float sampleRate, float frequency)
+
+    // type: 0 = Sine, 1 = Square, 2 = Saw
+    float process(float sampleRate, float frequency, int type = 0)
     {
+        if (frequency <= 0.0f) return 0.0f;
+
         float phaseIncrement = 6.28318530718f * frequency / sampleRate;
         currentPhase += phaseIncrement;
         if (currentPhase > 6.28318530718f) currentPhase -= 6.28318530718f;
-        return std::sin(currentPhase);
+
+        if (type == 0) return std::sin(currentPhase);
+        if (type == 1) return currentPhase < 3.14159265359f ? 1.0f : -1.0f;
+        return (currentPhase / 3.14159265359f) - 1.0f; // Sawtooth
     }
     void reset() { currentPhase = 0.0f; }
 private:
     float currentPhase = 0.0f;
+};
+
+class EnvelopeFollower
+{
+public:
+    float process(float sample, float attackMs, float releaseMs, float sampleRate)
+    {
+        float absSample = std::abs(sample);
+        float attackCoef = std::exp(-1.0f / (attackMs * 0.001f * sampleRate));
+        float releaseCoef = std::exp(-1.0f / (releaseMs * 0.001f * sampleRate));
+
+        if (absSample > envelope)
+            envelope = attackCoef * envelope + (1.0f - attackCoef) * absSample;
+        else
+            envelope = releaseCoef * envelope + (1.0f - releaseCoef) * absSample;
+
+        return envelope;
+    }
+private:
+    float envelope = 0.0f;
 };
 
 class DelayLine

@@ -7,6 +7,14 @@
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\PluginProcessor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\JUCE\\examples\\CMake\\AudioPlugin\\PluginProcessor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:JUCE\\examples\\CMake\\AudioPlugin\\PluginProcessor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
@@ -21,7 +29,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 2,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -30,6 +38,32 @@
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "Effects.h",
+              "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
+              "RelativeDocumentMoniker": "Source\\Effects.h",
+              "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
+              "RelativeToolTip": "Source\\Effects.h",
+              "ViewState": "AgIAAIwCAAAAAAAAAAAAwJMCAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-22T19:23:13.308Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "AmpMath.h",
+              "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h",
+              "RelativeDocumentMoniker": "Source\\AmpMath.h",
+              "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h",
+              "RelativeToolTip": "Source\\AmpMath.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAwEYAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-22T19:22:35.851Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "PluginProcessor.h",
               "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\JUCE\\examples\\CMake\\AudioPlugin\\PluginProcessor.h",
               "RelativeDocumentMoniker": "JUCE\\examples\\CMake\\AudioPlugin\\PluginProcessor.h",
@@ -37,8 +71,7 @@
               "RelativeToolTip": "JUCE\\examples\\CMake\\AudioPlugin\\PluginProcessor.h",
               "ViewState": "AgIAABsAAAAAAAAAAAAjwCkAAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2026-05-22T18:51:08.836Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-22T18:51:08.836Z"
             },
             {
               "$type": "Document",
@@ -48,14 +81,14 @@
               "RelativeDocumentMoniker": "Source\\PluginProcessor.cpp",
               "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.cpp",
               "RelativeToolTip": "Source\\PluginProcessor.cpp",
-              "ViewState": "AgIAAMcBAAAAAAAAAAAAwP8BAAAOAAAAAAAAAA==",
+              "ViewState": "AgIAAPUAAAAAAAAAAADwv/cAAABrAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-05-22T05:06:21.687Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "CMake Overview Pages",
               "DocumentMoniker": "CMake Overview Pages",
               "ToolTip": "CMake Overview Pages",

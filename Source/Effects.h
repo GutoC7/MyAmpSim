@@ -556,7 +556,7 @@ private:
     std::atomic<float>* threshold, * ratio, * attack, * release;
 };
 
-// --- PEDAL 14: PITCH SHIFTER (Granular) ---
+// --- PEDAL 14: PITCH SHIFTER (Granular Tape Heads) ---
 class PitchShifterPedal : public AudioEffect
 {
 public:
@@ -567,9 +567,13 @@ public:
     void prepare(double sampleRate, int samplesPerBlock) override
     {
         currentSampleRate = sampleRate;
-        delayBuffer.setSize(2, static_cast<int>(sampleRate) * 2); // 2-second buffer
+        // A 100ms buffer is plenty of room for pitch shifting grains
+        int bufferSize = static_cast<int>(sampleRate * 0.1f);
+        delayBuffer.setSize(2, bufferSize);
         delayBuffer.clear();
         writePos = 0;
+        phaseA = 0.0f;
+        phaseB = 0.5f; // Head B is exactly 180 degrees out of phase with Head A
     }
 
     void process(juce::AudioBuffer<float>& buffer) override
@@ -579,43 +583,88 @@ public:
         float shift = semitones->load();
         float mixVal = wetMix->load();
 
-        // Calculate read speed ratio
-        // 1.0 = normal, 2.0 = octave up, 0.5 = octave down
+        // If shifting by 0, just act as True Bypass to save CPU
+        if (std::abs(shift) < 0.01f) return;
+
+        // Ratio: 1.0 = normal, 2.0 = octave up, 0.5 = octave down
         float ratio = std::pow(2.0f, shift / 12.0f);
 
+        // The grain size determines the latency and low-freq response. ~40ms is standard for guitar.
+        float grainSizeSamples = currentSampleRate * 0.04f;
+
+        // How fast the read heads move relative to the write head
+        float phaseIncrement = (1.0f - ratio) / grainSizeSamples;
+
+        // Process per channel to preserve L1 Cache speed
         for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
         {
             auto* channelData = buffer.getWritePointer(channel);
             auto* delayData = delayBuffer.getWritePointer(channel);
+            int bufferLength = delayBuffer.getNumSamples();
+
+            // Use local variables to guarantee Left and Right channels stay perfectly synced!
+            float localPhaseA = phaseA;
+            float localPhaseB = phaseB;
+            int localWritePos = writePos;
 
             for (int i = 0; i < buffer.getNumSamples(); ++i)
             {
                 float inSample = channelData[i];
-                delayData[writePos] = inSample;
+                delayData[localWritePos] = inSample;
 
-                // Move read pointers at the calculated ratio
-                readPosA += ratio;
-                readPosB += ratio;
+                // 1. Calculate delay times for the two read heads
+                float delayA = localPhaseA * grainSizeSamples;
+                float delayB = localPhaseB * grainSizeSamples;
 
-                // Wrap pointers and create a crossfade window (Grain size = 50ms)
-                float grainSize = currentSampleRate * 0.05f;
-                if (readPosA >= delayBuffer.getNumSamples()) readPosA -= delayBuffer.getNumSamples();
-                if (readPosB >= delayBuffer.getNumSamples()) readPosB -= delayBuffer.getNumSamples();
+                // 2. Wrap the read positions around the circular buffer safely
+                float readPosA = localWritePos - delayA;
+                if (readPosA < 0.0f) readPosA += bufferLength;
 
-                // To prevent clicks, crossfade between Pointer A and B
-                // (Implementation simplified for stability)
-                float outA = delayData[static_cast<int>(readPosA)];
-                float outB = delayData[static_cast<int>(readPosB)];
+                float readPosB = localWritePos - delayB;
+                if (readPosB < 0.0f) readPosB += bufferLength;
 
-                float shiftedSample = (outA + outB) * 0.5f;
+                // 3. Linear Interpolation for Head A (Removes Zipper Noise)
+                int indexA1 = static_cast<int>(readPosA);
+                int indexA2 = indexA1 + 1;
+                if (indexA2 >= bufferLength) indexA2 -= bufferLength;
+                float fracA = readPosA - indexA1;
+                float sampleA = delayData[indexA1] * (1.0f - fracA) + delayData[indexA2] * fracA;
 
+                // 4. Linear Interpolation for Head B
+                int indexB1 = static_cast<int>(readPosB);
+                int indexB2 = indexB1 + 1;
+                if (indexB2 >= bufferLength) indexB2 -= bufferLength;
+                float fracB = readPosB - indexB1;
+                float sampleB = delayData[indexB1] * (1.0f - fracB) + delayData[indexB2] * fracB;
+
+                // 5. Apply Triangle Windows (Fade grains out before they reset)
+                float windowA = 1.0f - std::abs(localPhaseA * 2.0f - 1.0f);
+                float windowB = 1.0f - std::abs(localPhaseB * 2.0f - 1.0f);
+
+                // Mix the heads and apply the wet/dry knob
+                float shiftedSample = (sampleA * windowA) + (sampleB * windowB);
                 channelData[i] = (inSample * (1.0f - mixVal)) + (shiftedSample * mixVal);
 
-                if (channel == 0) // Only increment write pointer once per stereo frame
-                {
-                    writePos++;
-                    if (writePos >= delayBuffer.getNumSamples()) writePos = 0;
-                }
+                // 6. Advance LFO phases
+                localPhaseA += phaseIncrement;
+                if (localPhaseA >= 1.0f) localPhaseA -= 1.0f;
+                else if (localPhaseA < 0.0f) localPhaseA += 1.0f;
+
+                localPhaseB += phaseIncrement;
+                if (localPhaseB >= 1.0f) localPhaseB -= 1.0f;
+                else if (localPhaseB < 0.0f) localPhaseB += 1.0f;
+
+                // 7. Advance Write Pointer
+                localWritePos++;
+                if (localWritePos >= bufferLength) localWritePos = 0;
+            }
+
+            // Once the final channel (Right) is finished, permanently update the class variables
+            if (channel == buffer.getNumChannels() - 1)
+            {
+                phaseA = localPhaseA;
+                phaseB = localPhaseB;
+                writePos = localWritePos;
             }
         }
     }
@@ -624,7 +673,7 @@ public:
 private:
     juce::AudioBuffer<float> delayBuffer;
     int writePos = 0;
-    float readPosA = 0.0f, readPosB = 2400.0f; // Offset pointers
+    float phaseA = 0.0f, phaseB = 0.5f;
     double currentSampleRate = 48000.0;
     std::atomic<float>* semitones, * wetMix;
 };
@@ -640,4 +689,108 @@ public:
     }
 
     juce::String getName() const override { return "Octaver"; }
+};
+
+// --- PEDAL 16: ACOUSTIC SIMULATOR ---
+class AcousticSimPedal : public AudioEffect
+{
+public:
+    AcousticSimPedal(std::atomic<float>* bodyParam, std::atomic<float>* airParam, std::atomic<float>* resoParam)
+        : bodyDb(bodyParam), airDb(airParam), resoMix(resoParam) {
+    }
+
+    void prepare(double sampleRate, int samplesPerBlock) override
+    {
+        currentSampleRate = sampleRate;
+        juce::dsp::ProcessSpec spec{ sampleRate, static_cast<juce::uint32>(samplesPerBlock), 2 };
+
+        bodyFilter.prepare(spec);
+        midScoop.prepare(spec);
+        airFilter.prepare(spec);
+        bodyResonance.prepare(sampleRate);
+
+        // Scoop the magnetic "boxy" mids permanently
+        *midScoop.state = *juce::dsp::IIR::Coefficients<float>::makePeakFilter(sampleRate, 600.0f, 0.707f, juce::Decibels::decibelsToGain(-8.0f));
+    }
+
+    void process(juce::AudioBuffer<float>& buffer) override
+    {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
+        // Dynamic EQs
+        *bodyFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowShelf(currentSampleRate, 150.0f, 0.707f, juce::Decibels::decibelsToGain(bodyDb->load()));
+        *airFilter.state = *juce::dsp::IIR::Coefficients<float>::makeHighShelf(currentSampleRate, 4000.0f, 0.707f, juce::Decibels::decibelsToGain(airDb->load()));
+
+        juce::dsp::AudioBlock<float> block(buffer);
+        juce::dsp::ProcessContextReplacing<float> context(block);
+
+        bodyFilter.process(context);
+        midScoop.process(context);
+        airFilter.process(context);
+
+        // Add hollow wooden body resonance (a 3ms micro-delay)
+        float mix = resoMix->load();
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
+            auto* data = buffer.getWritePointer(channel);
+            for (int i = 0; i < buffer.getNumSamples(); ++i) {
+                float echo = bodyResonance.process(data[i], 0.4f, 0.003f, currentSampleRate);
+                data[i] = data[i] + (echo * mix);
+            }
+        }
+    }
+    juce::String getName() const override { return "AcousticSim"; }
+
+private:
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> bodyFilter, midScoop, airFilter;
+    DelayLine bodyResonance;
+    std::atomic<float>* bodyDb, * airDb, * resoMix;
+    double currentSampleRate = 48000.0;
+};
+
+// --- PEDAL 17: GUITAR SYNTH ---
+class GuitarSynthPedal : public AudioEffect
+{
+public:
+    GuitarSynthPedal(std::atomic<float>* typeParam, std::atomic<float>* mixParam, std::atomic<float>* trackedPitch)
+        : waveType(typeParam), mix(mixParam), pitchHz(trackedPitch) {
+    }
+
+    void prepare(double sampleRate, int samplesPerBlock) override { currentSampleRate = sampleRate; }
+
+    void process(juce::AudioBuffer<float>& buffer) override
+    {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
+        float hz = pitchHz->load();
+        float currentMix = mix->load();
+        int type = static_cast<int>(waveType->load());
+
+        auto* leftData = buffer.getWritePointer(0);
+        auto* rightData = (buffer.getNumChannels() > 1) ? buffer.getWritePointer(1) : nullptr;
+
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+        {
+            float inSample = leftData[i];
+
+            // 1. Calculate how loud the guitar string is right now
+            float env = envFollower.process(inSample, 5.0f, 50.0f, currentSampleRate);
+
+            // 2. Generate the raw synth tone and multiply by volume envelope
+            float synthTone = 0.0f;
+            if (hz > 40.0f && env > 0.01f) {
+                synthTone = osc.process(currentSampleRate, hz, type) * env * 2.0f;
+            }
+
+            // 3. Mix
+            leftData[i] = (inSample * (1.0f - currentMix)) + (synthTone * currentMix);
+            if (rightData) rightData[i] = leftData[i];
+        }
+    }
+    juce::String getName() const override { return "GuitarSynth"; }
+
+private:
+    SimpleOscillator osc;
+    EnvelopeFollower envFollower;
+    std::atomic<float>* waveType, * mix, * pitchHz;
+    double currentSampleRate = 48000.0;
 };
