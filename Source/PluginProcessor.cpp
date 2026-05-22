@@ -16,6 +16,8 @@ public:
 
     // THE PEDALBOARD
     std::vector<std::unique_ptr<AudioEffect>> pedalboard;
+    
+    std::atomic<int> routingMap[15];
 
     MyAmpSimAudioProcessor()
         : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
@@ -47,6 +49,7 @@ public:
         for (int i = 0; i < pedalboard.size(); ++i) {
             juce::String bypassID = "byp_" + juce::String(i);
             pedalboard[i]->isBypassed = apvts.getRawParameterValue(bypassID);
+            routingMap[i].store(i);
         }    
     }
 
@@ -87,13 +90,14 @@ public:
 		currentPitchHz.store(tuner.getHz()); // Update the shared variable for the GUI to read
 
 
-        // Process audio through the entire pedalboard dynamically
-        for (auto& pedal : pedalboard)
+        // PROCESS AUDIO USING THE DYNAMIC ROUTING MAP
+        for (int i = 0; i < 15; ++i)
         {
-            pedal->process(buffer);
+            // Read the map to find out which pedal is currently in slot 'i'
+            int pedalIndex = routingMap[i].load();
+            pedalboard[pedalIndex]->process(buffer);
         }
 
-        // Apply Master Volume at the very end
         buffer.applyGain(apvts.getRawParameterValue("master_vol")->load());
     }
 
@@ -197,27 +201,153 @@ private:
     }
 };
 
-// --- THE GUI ---
-class MyAmpSimEditor : public juce::AudioProcessorEditor, public juce::Timer
+// DRAGGABLE RACK BUTTON
+class DraggableRackButton : public juce::TextButton, public juce::DragAndDropTarget
+{
+public:
+    int currentSlotIndex = 0;
+    int fixedPedalID = 0;
+    std::function<void(int, int)> onSwap; // Callback to tell the main UI to swap pedals
+
+    DraggableRackButton(const juce::String& name, int id) : juce::TextButton(name), fixedPedalID(id) {}
+
+    // 1. Start Dragging
+    void mouseDrag(const juce::MouseEvent& e) override {
+        if (auto* dragContainer = juce::DragAndDropContainer::findParentDragContainerFor(this)) {
+            // pass the SLOT index as a string payload
+            dragContainer->startDragging(juce::String(currentSlotIndex), this);
+        }
+    }
+
+    // 2. Accept a Hover
+    bool isInterestedInDragSource(const SourceDetails& dragSourceDetails) override {
+        return true;
+    }
+
+    // 3. Handle the Drop
+    void itemDropped(const SourceDetails& dragSourceDetails) override {
+		int draggedSlotIndex = dragSourceDetails.description.toString().getIntValue();
+        if (draggedSlotIndex != currentSlotIndex && onSwap) {
+            onSwap(draggedSlotIndex, currentSlotIndex); // Trigger the swap
+        }
+    }
+};
+
+// DYNAMIC UI FACTORY COMPONENT
+class PedalUIBlock : public juce::Component
+{
+public:
+    PedalUIBlock(juce::AudioProcessorValueTreeState& state,
+        const juce::StringArray& sIDs,
+        const juce::String& cID = "",
+        const juce::StringArray& comboItems = {})
+        : apvts(state), sliderIDs(sIDs), comboID(cID)
+    {
+        // 1. Generate Sliders dynamically
+        for (auto& id : sliderIDs) {
+            auto* slider = new juce::Slider();
+            slider->setSliderStyle(juce::Slider::Rotary);
+            slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+            addAndMakeVisible(slider);
+            sliders.add(slider); // OwnedArray takes ownership of the pointer
+
+            auto* attachment = new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, id, *slider);
+            sliderAttachments.add(attachment);
+        }
+
+        // 2. Generate ComboBox dynamically (if a comboID was provided)
+        if (comboID.isNotEmpty()) {
+            comboBox.addItemList(comboItems, 1);
+            addAndMakeVisible(comboBox);
+            comboAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(apvts, comboID, comboBox);
+        }
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        g.setColour(juce::Colours::white);
+        g.setFont(20.0f);
+
+        // Edge Case: Cabinet Simulator has no parameters
+        if (sliderIDs.isEmpty() && comboID.isEmpty()) {
+            g.drawText("Cabinet IR Loaded. No parameters to edit.", 0, 10, 400, 20, juce::Justification::centredLeft);
+            return;
+        }
+
+        // Draw Labels dynamically by asking the APVTS for the parameter's real name
+        int x = 0;
+        for (auto& id : sliderIDs) {
+            juce::String name = apvts.getParameter(id)->getName(100);
+            g.drawText(name, x, 0, 100, 20, juce::Justification::centred);
+            x += 130; // Shift right for the next label
+        }
+        if (comboID.isNotEmpty()) {
+            juce::String name = apvts.getParameter(comboID)->getName(100);
+            g.drawText(name, x, 0, 100, 20, juce::Justification::centred);
+        }
+    }
+
+    void resized() override
+    {
+        int x = 0;
+        for (auto* slider : sliders) {
+            slider->setBounds(x, 30, 100, 100);
+            x += 130;
+        }
+        if (comboID.isNotEmpty()) {
+            comboBox.setBounds(x, 60, 100, 30);
+        }
+    }
+
+private:
+    juce::AudioProcessorValueTreeState& apvts;
+    juce::StringArray sliderIDs;
+    juce::String comboID;
+
+    juce::OwnedArray<juce::Slider> sliders;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAttachments;
+
+    juce::ComboBox comboBox;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAttachment;
+};
+
+// ==========================================
+// THE MAIN EDITOR
+// ==========================================
+class MyAmpSimEditor : public juce::AudioProcessorEditor, public juce::Timer, public juce::DragAndDropContainer
 {
 public:
     MyAmpSimEditor(MyAmpSimAudioProcessor& p) : AudioProcessorEditor(&p), audioProcessor(p)
     {
         setSize(1000, 380);
 
-        // Row 1 (IDs 0-7)
-        setupButton(btnGate, "Gate", 0); setupButton(btnComp, "Comp", 1);
-        setupButton(btnBoost, "Boost", 2); setupButton(btnDistortion, "Dist", 3);
-        setupButton(btnEq, "EQ", 4); setupButton(btnPitch, "Pitch", 5);
-        setupButton(btnOctave, "Octaver", 6); setupButton(btnCabinet, "Cab", 7);
+        // 1. SETUP TOP RACK BUTTONS
+        juce::StringArray pedalNames = {
+            "Comp", "Boost", "Dist", "EQ", "Gate", "Pitch", "Oct", "Cab",
+            "Wah", "Phas", "Flng", "Trem", "Cho", "Dly", "Rvb"
+        };
 
-        // Row 2 (IDs 8-14)
-        setupButton(btnWah, "AutoWah", 8); setupButton(btnPhaser, "Phaser", 9);
-        setupButton(btnFlanger, "Flanger", 10); setupButton(btnTremolo, "Tremolo", 11);
-        setupButton(btnChorus, "Chorus", 12); setupButton(btnDelay, "Delay", 13);
-        setupButton(btnReverb, "Reverb", 14);
+        for (int i = 0; i < 15; ++i) {
+            auto* btn = new DraggableRackButton(pedalNames[i], i);
+            btn->currentSlotIndex = i; // Initially the slot matches ID
 
-        // 2. SETUP UI CONTROLS
+            // Show its parameters when clicked
+            btn->onClick = [this, btn] {
+                currentSelectedPedalID = btn->fixedPedalID;
+                updateVisibilities();
+                repaint();
+                };
+
+			// Swap the routing when dragged and dropped
+            btn->onSwap = [this](int fromSlot, int toSlot) {
+                swapRouting(fromSlot, toSlot);
+                };
+
+            addAndMakeVisible(btn);
+            rackButtons.add(btn);
+        }
+
+        // 2. SETUP GLOBAL UI CONTROLS
         bypassToggle.setButtonText("PEDAL OFF");
         addAndMakeVisible(bypassToggle);
 
@@ -228,112 +358,68 @@ public:
         killAllButton.setButtonText("RESET ALL SETTINGS");
         killAllButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkred);
         killAllButton.onClick = [this] {
-            // Loop through every parameter registered to the Audio Processor
-            for (auto* param : audioProcessor.getParameters())
-            {
-                // Cast it to a ranged parameter
+            for (auto* param : audioProcessor.getParameters()) {
                 if (auto* rangedParam = dynamic_cast<juce::RangedAudioParameter*>(param))
-                {
-                    // Force it back to its default value and tell the DAW about it
                     rangedParam->setValueNotifyingHost(rangedParam->getDefaultValue());
-                }
             }
             };
         addAndMakeVisible(killAllButton);
 
-        distTypeBox.addItemList({ "Tube", "Overdrive", "Fuzz" }, 1);
-        addChildComponent(distTypeBox);
-        distTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(audioProcessor.apvts, "dist_type", distTypeBox);
+        // Setup Master Vol
+        masterVol.setSliderStyle(juce::Slider::Rotary);
+        masterVol.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+        addAndMakeVisible(masterVol);
+        volAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.apvts, "master_vol", masterVol);
 
+        // 3. GENERATE PEDAL BLOCKS USING THE FACTORY
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "ng_thresh", "ng_ratio", "ng_att", "ng_rel" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "cmp_thresh", "cmp_ratio", "cmp_att", "cmp_rel" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "bst_gain" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "drive" }, "dist_type", { "Tube", "Overdrive", "Fuzz" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "eq_low", "eq_mid", "eq_high" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "ps_semi", "ps_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "oct_semi", "oct_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, {})); // Cabinet
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "wah_rate", "wah_depth", "wah_q" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "phs_rate", "phs_depth", "phs_freq", "phs_feed" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "flg_rate", "flg_depth", "flg_feed" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "trem_depth", "trem_rate" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "cho_rate", "cho_depth", "cho_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "delay_time", "delay_feed", "delay_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "rvb_room", "rvb_damp", "rvb_mix" }));
 
-        // Setup Sliders (addChildComponent so they start invisible)
-        setupKnob(ngThreshKnob); setupKnob(ngRatioKnob); setupKnob(ngAttKnob); setupKnob(ngRelKnob);
-        setupKnob(cmpThreshKnob); setupKnob(cmpRatioKnob); setupKnob(cmpAttKnob); setupKnob(cmpRelKnob);
-        setupKnob(bstGainKnob); setupKnob(driveKnob);
-        setupKnob(eqLowKnob); setupKnob(eqMidKnob); setupKnob(eqHighKnob);
-        setupKnob(psSemiKnob); setupKnob(psMixKnob);
-        setupKnob(octSemiKnob); setupKnob(octMixKnob);
-        setupKnob(wahRateKnob); setupKnob(wahDepthKnob); setupKnob(wahQKnob);
-        setupKnob(phsRateKnob); setupKnob(phsDepthKnob); setupKnob(phsFreqKnob); setupKnob(phsFeedKnob);
-        setupKnob(flgRateKnob); setupKnob(flgDepthKnob); setupKnob(flgFeedKnob);
-        setupKnob(tremDepthKnob); setupKnob(tremRateKnob);
-        setupKnob(choRateKnob); setupKnob(choDepthKnob); setupKnob(choMixKnob);
-        setupKnob(dTimeKnob); setupKnob(dFeedKnob); setupKnob(dMixKnob);
-        setupKnob(rvbRoomKnob); setupKnob(rvbDampKnob); setupKnob(rvbMixKnob);
-        setupKnob(volKnob);
-
-        // Bind Sliders to APVTS
-        using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-        ngThreshAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "ng_thresh", ngThreshKnob);
-        ngRatioAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "ng_ratio", ngRatioKnob);
-        ngAttAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "ng_att", ngAttKnob);
-        ngRelAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "ng_rel", ngRelKnob);
-
-        cmpThreshAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "cmp_thresh", cmpThreshKnob);
-        cmpRatioAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "cmp_ratio", cmpRatioKnob);
-        cmpAttAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "cmp_att", cmpAttKnob);
-        cmpRelAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "cmp_rel", cmpRelKnob);
-
-        bstGainAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "bst_gain", bstGainKnob);
-        driveAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "drive", driveKnob);
-
-        eqLowAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "eq_low", eqLowKnob);
-        eqMidAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "eq_mid", eqMidKnob);
-        eqHighAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "eq_high", eqHighKnob);
-
-        psSemiAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "ps_semi", psSemiKnob);
-        psMixAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "ps_mix", psMixKnob);
-        octSemiAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "oct_semi", octSemiKnob);
-        octMixAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "oct_mix", octMixKnob);
-
-        wahRateAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "wah_rate", wahRateKnob);
-        wahDepthAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "wah_depth", wahDepthKnob);
-        wahQAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "wah_q", wahQKnob);
-
-        phsRateAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "phs_rate", phsRateKnob);
-        phsDepthAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "phs_depth", phsDepthKnob);
-        phsFreqAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "phs_freq", phsFreqKnob);
-        phsFeedAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "phs_feed", phsFeedKnob);
-
-        flgRateAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "flg_rate", flgRateKnob);
-        flgDepthAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "flg_depth", flgDepthKnob);
-        flgFeedAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "flg_feed", flgFeedKnob);
-
-        tremDepthAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "trem_depth", tremDepthKnob);
-        tremRateAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "trem_rate", tremRateKnob);
-
-        choRateAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "cho_rate", choRateKnob);
-        choDepthAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "cho_depth", choDepthKnob);
-        choMixAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "cho_mix", choMixKnob);
-
-        dTimeAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "delay_time", dTimeKnob);
-        dFeedAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "delay_feed", dFeedKnob);
-        dMixAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "delay_mix", dMixKnob);
-
-        rvbRoomAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "rvb_room", rvbRoomKnob);
-        rvbDampAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "rvb_damp", rvbDampKnob);
-        rvbMixAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "rvb_mix", rvbMixKnob);
-
-        volAttachment = std::make_unique<Attachment>(audioProcessor.apvts, "master_vol", volKnob);
+        // Add them to the UI but keep them hidden initially
+        for (auto* block : pedalBlocks) addChildComponent(block);
 
         updateVisibilities();
         startTimerHz(30);
+    }
+
+    void swapRouting(int slotA, int slotB)
+    {
+        // 1. Swap the internal audio processor routing map (thread safe bc exceptions bit my ass last time)
+        int dspPedalA = audioProcessor.routingMap[slotA].load();
+        int dspPedalB = audioProcessor.routingMap[slotB].load();
+        audioProcessor.routingMap[slotA].store(dspPedalB);
+        audioProcessor.routingMap[slotB].store(dspPedalA);
+
+        // 2. Find the two UI buttons sitting in those slots and swap their slot assignments
+        for (auto* btn : rackButtons) {
+            if (btn->currentSlotIndex == slotA) btn->currentSlotIndex = slotB;
+            else if (btn->currentSlotIndex == slotB) btn->currentSlotIndex = slotA;
+        }
+
+        // 3. Force the UI to visually reorganize itself based on the new slots
+        resized();
     }
 
     void timerCallback() override
     {
         bool needsRepaint = false;
 
-        // Safely check bypass states for all 15 pedals
         for (int i = 0; i < 15; ++i) {
-            juce::String bypassID = "byp_" + juce::String(i);
-
-            // 1. Get the pointer
-            auto* paramPtr = audioProcessor.apvts.getRawParameterValue(bypassID);
-
-            // 2. Only load() if the pointer actually exists
-            if (paramPtr != nullptr)
-            {
+            auto* paramPtr = audioProcessor.apvts.getRawParameterValue("byp_" + juce::String(i));
+            if (paramPtr != nullptr) {
                 bool isOff = paramPtr->load() > 0.5f;
                 if (pedalStates[i] != isOff) {
                     pedalStates[i] = isOff;
@@ -351,69 +437,18 @@ public:
         if (needsRepaint) repaint();
     }
 
-    // Sets up a Rack Button
-    void setupButton(juce::TextButton& btn, const juce::String& text, int id)
-    {
-        btn.setButtonText(text);
-
-        // This Lambda fires when you click the button
-        btn.onClick = [this, id] {
-            currentPedal = id;       // Update selected pedal
-            updateVisibilities();    // Show/Hide relevant knobs
-            repaint();
-            };
-        addAndMakeVisible(btn);
-    }
-
-    // Sets up a Knob
-    void setupKnob(juce::Slider& slider)
-    {
-        slider.setSliderStyle(juce::Slider::Rotary);
-        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
-        addChildComponent(slider); // adds it to UI but keeps it hidden
-    }
-
-    // Decides what is visible right now
     void updateVisibilities()
     {
-        // Hide everything
-        ngThreshKnob.setVisible(false); ngRatioKnob.setVisible(false); ngAttKnob.setVisible(false); ngRelKnob.setVisible(false);
-        cmpThreshKnob.setVisible(false); cmpRatioKnob.setVisible(false); cmpAttKnob.setVisible(false); cmpRelKnob.setVisible(false);
-        bstGainKnob.setVisible(false); driveKnob.setVisible(false); distTypeBox.setVisible(false);
-        eqLowKnob.setVisible(false); eqMidKnob.setVisible(false); eqHighKnob.setVisible(false);
-        psSemiKnob.setVisible(false); psMixKnob.setVisible(false);
-        octSemiKnob.setVisible(false); octMixKnob.setVisible(false);
-        wahRateKnob.setVisible(false); wahDepthKnob.setVisible(false); wahQKnob.setVisible(false);
-        phsRateKnob.setVisible(false); phsDepthKnob.setVisible(false); phsFreqKnob.setVisible(false); phsFeedKnob.setVisible(false);
-        flgRateKnob.setVisible(false); flgDepthKnob.setVisible(false); flgFeedKnob.setVisible(false);
-        tremDepthKnob.setVisible(false); tremRateKnob.setVisible(false);
-        choRateKnob.setVisible(false); choDepthKnob.setVisible(false); choMixKnob.setVisible(false);
-        dTimeKnob.setVisible(false); dFeedKnob.setVisible(false); dMixKnob.setVisible(false);
-        rvbRoomKnob.setVisible(false); rvbDampKnob.setVisible(false); rvbMixKnob.setVisible(false);
+        // Only show the block matching the currently clicked pedal ID
+        for (int i = 0; i < pedalBlocks.size(); ++i) {
+            pedalBlocks[i]->setVisible(i == currentSelectedPedalID);
+        }
 
-        // Show Based on Selection
-        if (currentPedal == 0) { ngThreshKnob.setVisible(true); ngRatioKnob.setVisible(true); ngAttKnob.setVisible(true); ngRelKnob.setVisible(true); }
-        if (currentPedal == 1) { cmpThreshKnob.setVisible(true); cmpRatioKnob.setVisible(true); cmpAttKnob.setVisible(true); cmpRelKnob.setVisible(true); }
-        if (currentPedal == 2) { bstGainKnob.setVisible(true); }
-        if (currentPedal == 3) { driveKnob.setVisible(true); distTypeBox.setVisible(true); }
-        if (currentPedal == 4) { eqLowKnob.setVisible(true); eqMidKnob.setVisible(true); eqHighKnob.setVisible(true); }
-        if (currentPedal == 5) { psSemiKnob.setVisible(true); psMixKnob.setVisible(true); }
-        if (currentPedal == 6) { octSemiKnob.setVisible(true); octMixKnob.setVisible(true); }
-        if (currentPedal == 8) { wahRateKnob.setVisible(true); wahDepthKnob.setVisible(true); wahQKnob.setVisible(true); }
-        if (currentPedal == 9) { phsRateKnob.setVisible(true); phsDepthKnob.setVisible(true); phsFreqKnob.setVisible(true); phsFeedKnob.setVisible(true); }
-        if (currentPedal == 10) { flgRateKnob.setVisible(true); flgDepthKnob.setVisible(true); flgFeedKnob.setVisible(true); }
-        if (currentPedal == 11) { tremDepthKnob.setVisible(true); tremRateKnob.setVisible(true); }
-        if (currentPedal == 12) { choRateKnob.setVisible(true); choDepthKnob.setVisible(true); choMixKnob.setVisible(true); }
-        if (currentPedal == 13) { dTimeKnob.setVisible(true); dFeedKnob.setVisible(true); dMixKnob.setVisible(true); }
-        if (currentPedal == 14) { rvbRoomKnob.setVisible(true); rvbDampKnob.setVisible(true); rvbMixKnob.setVisible(true); }
-
-        volKnob.setVisible(true);
-
-        juce::String bypassID = "byp_" + juce::String(currentPedal);
-        bypassAttachment.reset(); // Destroy old binding
+        // Dynamically re-bind the Bypass switch to the current pedal
+        juce::String bypassID = "byp_" + juce::String(currentSelectedPedalID);
+        bypassAttachment.reset();
         bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(audioProcessor.apvts, bypassID, bypassToggle);
 
-        // Trigger a UI recalculation
         resized();
     }
 
@@ -425,30 +460,18 @@ public:
         g.setColour(juce::Colours::darkred);
         g.drawLine(0, 40, 1000, 40, 2.0f);
 
-        // COLOR LOGIC: Blue = Selected, Green = ON, Grey = OFF
-        auto getColor = [this](int id) {
-            if (currentPedal == id) return juce::Colours::dodgerblue;
-            return pedalStates[id] ? juce::Colours::darkgrey : juce::Colours::limegreen;
-            };
+        // Update color logic to use fixedPedalID
+        for (auto* btn : rackButtons) {
+            if (currentSelectedPedalID == btn->fixedPedalID) {
+                btn->setColour(juce::TextButton::buttonColourId, juce::Colours::dodgerblue);
+            }
+            else {
+                bool isBypassed = pedalStates[btn->fixedPedalID];
+                btn->setColour(juce::TextButton::buttonColourId, isBypassed ? juce::Colours::darkgrey : juce::Colours::limegreen);
+            }
+        }
 
-        btnGate.setColour(juce::TextButton::buttonColourId, getColor(0));
-        btnComp.setColour(juce::TextButton::buttonColourId, getColor(1));
-        btnBoost.setColour(juce::TextButton::buttonColourId, getColor(2));
-        btnDistortion.setColour(juce::TextButton::buttonColourId, getColor(3));
-        btnEq.setColour(juce::TextButton::buttonColourId, getColor(4));
-        btnPitch.setColour(juce::TextButton::buttonColourId, getColor(5));
-        btnOctave.setColour(juce::TextButton::buttonColourId, getColor(6));
-        btnCabinet.setColour(juce::TextButton::buttonColourId, getColor(7));
-
-        btnWah.setColour(juce::TextButton::buttonColourId, getColor(8));
-        btnPhaser.setColour(juce::TextButton::buttonColourId, getColor(9));
-        btnFlanger.setColour(juce::TextButton::buttonColourId, getColor(10));
-        btnTremolo.setColour(juce::TextButton::buttonColourId, getColor(11));
-        btnChorus.setColour(juce::TextButton::buttonColourId, getColor(12));
-        btnDelay.setColour(juce::TextButton::buttonColourId, getColor(13));
-        btnReverb.setColour(juce::TextButton::buttonColourId, getColor(14));
-
-        // Tuner Screen
+        // TUNER SCREEN
         if (tunerToggle.getToggleState())
         {
             g.setColour(juce::Colours::black);
@@ -456,7 +479,7 @@ public:
             g.setColour(juce::Colours::limegreen);
 
             juce::String noteName = "--";
-			if (lastHz > 40.0f) { // Only display if we have a valid frequency
+            if (lastHz > 40.0f) {
                 int midiNote = std::round(69 + 12 * std::log2(lastHz / 440.0));
                 juce::StringArray notes = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
                 noteName = notes[midiNote % 12];
@@ -469,26 +492,7 @@ public:
 
         g.setColour(juce::Colours::white);
         g.setFont(20.0f);
-        int yLabel = 140;
-
-        // Draw parameter labels
-        if (currentPedal == 0) { g.drawText("Thresh", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Ratio", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Attack", 310, yLabel, 100, 20, juce::Justification::centred); g.drawText("Release", 440, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 1) { g.drawText("Thresh", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Ratio", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Attack", 310, yLabel, 100, 20, juce::Justification::centred); g.drawText("Release", 440, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 2) { g.drawText("Boost dB", 50, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 3) { g.drawText("Drive", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Type", 180, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 4) { g.drawText("Low EQ", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Mid EQ", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("High EQ", 310, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 5) { g.drawText("Shift", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Mix", 180, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 6) { g.drawText("Octave", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Mix", 180, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 7) { g.drawText("Cabinet IR Loaded.", 50, yLabel + 50, 400, 20, juce::Justification::centredLeft); }
-        else if (currentPedal == 8) { g.drawText("Wah Rate", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Wah Depth", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Resonance", 310, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 9) { g.drawText("Phs Rate", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Phs Depth", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Center Freq", 310, yLabel, 100, 20, juce::Justification::centred); g.drawText("Feedback", 440, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 10) { g.drawText("Flg Rate", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Flg Depth", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Feedback", 310, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 11) { g.drawText("Trem Depth", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Trem Rate", 180, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 12) { g.drawText("Cho Rate", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Cho Depth", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Cho Mix", 310, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 13) { g.drawText("Dly Time", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Dly Feed", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Dly Mix", 310, yLabel, 100, 20, juce::Justification::centred); }
-        else if (currentPedal == 14) { g.drawText("Room Size", 50, yLabel, 100, 20, juce::Justification::centred); g.drawText("Damping", 180, yLabel, 100, 20, juce::Justification::centred); g.drawText("Rvb Mix", 310, yLabel, 100, 20, juce::Justification::centred); }
-
-        g.drawText("Master Vol", 850, yLabel, 100, 20, juce::Justification::centred);
+        g.drawText("Master Vol", 850, 140, 100, 20, juce::Justification::centred);
     }
 
     void resized() override
@@ -498,96 +502,48 @@ public:
         auto rackBottom = area.removeFromTop(40);
 
         int topWidth = 1000 / 8;
-        btnGate.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-        btnComp.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-        btnBoost.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-        btnDistortion.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-        btnEq.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-        btnPitch.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-        btnOctave.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-        btnCabinet.setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-
         int botWidth = 1000 / 7;
-        btnWah.setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
-        btnPhaser.setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
-        btnFlanger.setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
-        btnTremolo.setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
-        btnChorus.setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
-        btnDelay.setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
-        btnReverb.setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
+
+		// Dynamic button placement based on their assigned slot index, not their fixed pedal ID
+        for (int slot = 0; slot < 15; ++slot)
+        {
+            // Find which button belongs in this slot
+            DraggableRackButton* btnToDraw = nullptr;
+            for (auto* btn : rackButtons) {
+                if (btn->currentSlotIndex == slot) { btnToDraw = btn; break; }
+            }
+
+            if (btnToDraw) {
+                if (slot < 8) btnToDraw->setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
+                else btnToDraw->setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
+            }
+        }
 
         bypassToggle.setBounds(50, 100, 150, 30);
         tunerToggle.setBounds(700, 100, 120, 30);
         killAllButton.setBounds(850, 100, 150, 30);
 
-        int yKnob = 170; // Shifted knobs down
+        // Place the active PedalUIBlock
+        for (auto* block : pedalBlocks) {
+            block->setBounds(50, 140, 600, 150);
+        }
 
-        // Dynamic Knobs
-        if (currentPedal == 0) { ngThreshKnob.setBounds(50, yKnob, 100, 100); ngRatioKnob.setBounds(180, yKnob, 100, 100); ngAttKnob.setBounds(310, yKnob, 100, 100); ngRelKnob.setBounds(440, yKnob, 100, 100); }
-        if (currentPedal == 1) { cmpThreshKnob.setBounds(50, yKnob, 100, 100); cmpRatioKnob.setBounds(180, yKnob, 100, 100); cmpAttKnob.setBounds(310, yKnob, 100, 100); cmpRelKnob.setBounds(440, yKnob, 100, 100); }
-        if (currentPedal == 2) { bstGainKnob.setBounds(50, yKnob, 100, 100); }
-        if (currentPedal == 3) { driveKnob.setBounds(50, yKnob, 100, 100); distTypeBox.setBounds(180, yKnob + 30, 100, 30); }
-        if (currentPedal == 4) { eqLowKnob.setBounds(50, yKnob, 100, 100); eqMidKnob.setBounds(180, yKnob, 100, 100); eqHighKnob.setBounds(310, yKnob, 100, 100); }
-        if (currentPedal == 5) { psSemiKnob.setBounds(50, yKnob, 100, 100); psMixKnob.setBounds(180, yKnob, 100, 100); }
-        if (currentPedal == 6) { octSemiKnob.setBounds(50, yKnob, 100, 100); octMixKnob.setBounds(180, yKnob, 100, 100); }
-        if (currentPedal == 8) { wahRateKnob.setBounds(50, yKnob, 100, 100); wahDepthKnob.setBounds(180, yKnob, 100, 100); wahQKnob.setBounds(310, yKnob, 100, 100); }
-        if (currentPedal == 9) { phsRateKnob.setBounds(50, yKnob, 100, 100); phsDepthKnob.setBounds(180, yKnob, 100, 100); phsFreqKnob.setBounds(310, yKnob, 100, 100); phsFeedKnob.setBounds(440, yKnob, 100, 100); }
-        if (currentPedal == 10) { flgRateKnob.setBounds(50, yKnob, 100, 100); flgDepthKnob.setBounds(180, yKnob, 100, 100); flgFeedKnob.setBounds(310, yKnob, 100, 100); }
-        if (currentPedal == 11) { tremDepthKnob.setBounds(50, yKnob, 100, 100); tremRateKnob.setBounds(180, yKnob, 100, 100); }
-        if (currentPedal == 12) { choRateKnob.setBounds(50, yKnob, 100, 100); choDepthKnob.setBounds(180, yKnob, 100, 100); choMixKnob.setBounds(310, yKnob, 100, 100); }
-        if (currentPedal == 13) { dTimeKnob.setBounds(50, yKnob, 100, 100); dFeedKnob.setBounds(180, yKnob, 100, 100); dMixKnob.setBounds(310, yKnob, 100, 100); }
-        if (currentPedal == 14) { rvbRoomKnob.setBounds(50, yKnob, 100, 100); rvbDampKnob.setBounds(180, yKnob, 100, 100); rvbMixKnob.setBounds(310, yKnob, 100, 100); }
-
-        volKnob.setBounds(850, yKnob, 100, 100);
+        masterVol.setBounds(850, 170, 100, 100);
     }
 
 private:
     MyAmpSimAudioProcessor& audioProcessor;
-    int currentPedal = 0;
-
+    int currentSelectedPedalID = 0; // Tracks which pedal's knobs are visible
     float lastHz = 0.0f;
-	bool pedalStates[15] = { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true }; // all bypassed by default
+    bool pedalStates[15] = { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true };
+
+    juce::OwnedArray<DraggableRackButton> rackButtons; 
+    juce::OwnedArray<PedalUIBlock> pedalBlocks;
 
     juce::TextButton killAllButton;
     juce::ToggleButton bypassToggle, tunerToggle;
-    juce::ComboBox distTypeBox;
-
-    juce::TextButton btnGate, btnComp, btnBoost, btnDistortion, btnEq, btnPitch, btnOctave, btnCabinet;
-    juce::TextButton btnWah, btnPhaser, btnFlanger, btnTremolo, btnChorus, btnDelay, btnReverb;
-
-    juce::Slider ngThreshKnob, ngRatioKnob, ngAttKnob, ngRelKnob;
-    juce::Slider cmpThreshKnob, cmpRatioKnob, cmpAttKnob, cmpRelKnob;
-    juce::Slider bstGainKnob, driveKnob;
-    juce::Slider eqLowKnob, eqMidKnob, eqHighKnob;
-    juce::Slider psSemiKnob, psMixKnob;
-    juce::Slider octSemiKnob, octMixKnob;
-    juce::Slider wahRateKnob, wahDepthKnob, wahQKnob;
-    juce::Slider phsRateKnob, phsDepthKnob, phsFreqKnob, phsFeedKnob;
-    juce::Slider flgRateKnob, flgDepthKnob, flgFeedKnob;
-    juce::Slider tremDepthKnob, tremRateKnob;
-    juce::Slider choRateKnob, choDepthKnob, choMixKnob;
-    juce::Slider dTimeKnob, dFeedKnob, dMixKnob;
-    juce::Slider rvbRoomKnob, rvbDampKnob, rvbMixKnob;
-    juce::Slider volKnob;
-
-    // Explicit unique_ptrs instead of using an alias 
-    using Attachment = juce::AudioProcessorValueTreeState::SliderAttachment;
-    std::unique_ptr<Attachment> ngThreshAttachment, ngRatioAttachment, ngAttAttachment, ngRelAttachment;
-    std::unique_ptr<Attachment> cmpThreshAttachment, cmpRatioAttachment, cmpAttAttachment, cmpRelAttachment;
-    std::unique_ptr<Attachment> bstGainAttachment, driveAttachment;
-    std::unique_ptr<Attachment> eqLowAttachment, eqMidAttachment, eqHighAttachment;
-    std::unique_ptr<Attachment> psSemiAttachment, psMixAttachment;
-    std::unique_ptr<Attachment> octSemiAttachment, octMixAttachment;
-    std::unique_ptr<Attachment> wahRateAttachment, wahDepthAttachment, wahQAttachment;
-    std::unique_ptr<Attachment> phsRateAttachment, phsDepthAttachment, phsFreqAttachment, phsFeedAttachment;
-    std::unique_ptr<Attachment> flgRateAttachment, flgDepthAttachment, flgFeedAttachment;
-    std::unique_ptr<Attachment> tremDepthAttachment, tremRateAttachment;
-    std::unique_ptr<Attachment> choRateAttachment, choDepthAttachment, choMixAttachment;
-    std::unique_ptr<Attachment> dTimeAttachment, dFeedAttachment, dMixAttachment;
-    std::unique_ptr<Attachment> rvbRoomAttachment, rvbDampAttachment, rvbMixAttachment;
-    std::unique_ptr<Attachment> volAttachment;
-
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> distTypeAttachment;
+    juce::Slider masterVol;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
 };
 
