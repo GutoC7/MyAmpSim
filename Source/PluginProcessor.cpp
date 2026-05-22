@@ -25,32 +25,36 @@ public:
         // Initialize the APVTS with our parameter layout
         apvts(*this, nullptr, "Parameters", createParameterLayout())
     {
-        // Assemble the signal chain, passing pointers to the raw data in our database
-        // 1. Dynamics
+        // 0-7: Dynamics, Pitch, and Drive (Top Row)
+        pedalboard.push_back(std::make_unique<NoiseGatePedal>(apvts.getRawParameterValue("ng_thresh"), apvts.getRawParameterValue("ng_ratio"), apvts.getRawParameterValue("ng_att"), apvts.getRawParameterValue("ng_rel")));
         pedalboard.push_back(std::make_unique<CompressorPedal>(apvts.getRawParameterValue("cmp_thresh"), apvts.getRawParameterValue("cmp_ratio"), apvts.getRawParameterValue("cmp_att"), apvts.getRawParameterValue("cmp_rel")));
         pedalboard.push_back(std::make_unique<BoosterPedal>(apvts.getRawParameterValue("bst_gain")));
-
-        // 2. Drive & Tone
         pedalboard.push_back(std::make_unique<DistortionPedal>(apvts.getRawParameterValue("drive"), apvts.getRawParameterValue("dist_type")));
         pedalboard.push_back(std::make_unique<EqPedal>(apvts.getRawParameterValue("eq_low"), apvts.getRawParameterValue("eq_mid"), apvts.getRawParameterValue("eq_high")));
+        pedalboard.push_back(std::make_unique<PitchShifterPedal>(apvts.getRawParameterValue("ps_semi"), apvts.getRawParameterValue("ps_mix")));
+        pedalboard.push_back(std::make_unique<OctaverPedal>(apvts.getRawParameterValue("oct_semi"), apvts.getRawParameterValue("oct_mix")));
         pedalboard.push_back(std::make_unique<CabinetPedal>());
 
-        // 3. Filters & Modulation
+        // 8-14: Modulation and Time (Bottom Row)
         pedalboard.push_back(std::make_unique<AutoWahPedal>(apvts.getRawParameterValue("wah_rate"), apvts.getRawParameterValue("wah_depth"), apvts.getRawParameterValue("wah_q")));
         pedalboard.push_back(std::make_unique<PhaserPedal>(apvts.getRawParameterValue("phs_rate"), apvts.getRawParameterValue("phs_depth"), apvts.getRawParameterValue("phs_freq"), apvts.getRawParameterValue("phs_feed")));
         pedalboard.push_back(std::make_unique<FlangerPedal>(apvts.getRawParameterValue("flg_rate"), apvts.getRawParameterValue("flg_depth"), apvts.getRawParameterValue("flg_feed")));
         pedalboard.push_back(std::make_unique<TremoloPedal>(apvts.getRawParameterValue("trem_depth"), apvts.getRawParameterValue("trem_rate")));
         pedalboard.push_back(std::make_unique<ChorusPedal>(apvts.getRawParameterValue("cho_rate"), apvts.getRawParameterValue("cho_depth"), apvts.getRawParameterValue("cho_mix")));
-
-        // 4. Time
         pedalboard.push_back(std::make_unique<DelayPedal>(apvts.getRawParameterValue("delay_time"), apvts.getRawParameterValue("delay_feed"), apvts.getRawParameterValue("delay_mix")));
         pedalboard.push_back(std::make_unique<ReverbPedal>(apvts.getRawParameterValue("rvb_room"), apvts.getRawParameterValue("rvb_damp"), apvts.getRawParameterValue("rvb_mix")));
         
+        // Setup Routing mapping and FORCE default state to Bypassed (Off)
         for (int i = 0; i < pedalboard.size(); ++i) {
             juce::String bypassID = "byp_" + juce::String(i);
             pedalboard[i]->isBypassed = apvts.getRawParameterValue(bypassID);
             routingMap[i].store(i);
-        }    
+
+            // Explicitly force the parameter to 1.0f (true / off) on startup
+            if (auto* param = apvts.getParameter(bypassID)) {
+                param->setValueNotifyingHost(1.0f);
+            }
+        }
     }
 
     ~MyAmpSimAudioProcessor() override = default;
@@ -112,8 +116,68 @@ public:
     void setCurrentProgram(int index) override {}
     const juce::String getProgramName(int index) override { return {}; }
     void changeProgramName(int index, const juce::String& newName) override {}
-    void getStateInformation(juce::MemoryBlock& destData) override {}
-    void setStateInformation(const void* data, int sizeInBytes) override {}
+    void getStateInformation(juce::MemoryBlock& destData) override
+    {
+        auto state = apvts.copyState();
+        std::unique_ptr<juce::XmlElement> xml(state.createXml());
+
+        // NUCLEAR OPTION: Delete any routing tags that sneaked into the XML
+        xml->deleteAllChildElementsWithTagName("ROUTING");
+
+        auto* routingXml = new juce::XmlElement("ROUTING");
+        for (int i = 0; i < 15; ++i) routingXml->setAttribute("slot" + juce::String(i), routingMap[i].load());
+
+        xml->addChildElement(routingXml);
+        copyXmlToBinary(*xml, destData);
+    }
+
+    void setStateInformation(const void* data, int sizeInBytes) override
+    {
+        std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+        if (xmlState != nullptr)
+        {
+            // 1. Find the LAST routing tag (ignores the old corrupted parasite tags)
+            juce::XmlElement* bestRouting = nullptr;
+            for (auto* child : xmlState->getChildIterator()) {
+                if (child->hasTagName("ROUTING")) bestRouting = child;
+            }
+
+            if (bestRouting != nullptr) {
+                bool isPedalUsed[15] = { false };
+
+                // 2. Try to load the slots safely
+                for (int slot = 0; slot < 15; ++slot) {
+                    int pedalID = bestRouting->getIntAttribute("slot" + juce::String(slot), slot);
+                    if (pedalID >= 0 && pedalID < 15 && !isPedalUsed[pedalID]) {
+                        routingMap[slot].store(pedalID);
+                        isPedalUsed[pedalID] = true;
+                    }
+                    else {
+                        routingMap[slot].store(-1); // Mark slot as corrupted/empty
+                    }
+                }
+
+                // 3. THE IMMUNE SYSTEM: Heal any corrupted/missing slots
+                for (int slot = 0; slot < 15; ++slot) {
+                    if (routingMap[slot].load() == -1) {
+                        for (int p = 0; p < 15; ++p) { // Find a pedal not yet on the board
+                            if (!isPedalUsed[p]) {
+                                routingMap[slot].store(p);
+                                isPedalUsed[p] = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 4. Scrub the XML and feed it to the APVTS safely
+            xmlState->deleteAllChildElementsWithTagName("ROUTING");
+            if (xmlState->hasTagName(apvts.state.getType())) {
+                apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+            }
+        }
+    }
 
 private:
     // BUILDS THE DATABASE
@@ -311,9 +375,7 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAttachment;
 };
 
-// ==========================================
 // THE MAIN EDITOR
-// ==========================================
 class MyAmpSimEditor : public juce::AudioProcessorEditor, public juce::Timer, public juce::DragAndDropContainer
 {
 public:
@@ -323,7 +385,7 @@ public:
 
         // 1. SETUP TOP RACK BUTTONS
         juce::StringArray pedalNames = {
-            "Comp", "Boost", "Dist", "EQ", "Gate", "Pitch", "Oct", "Cab",
+            "Gate", "Comp", "Boost", "Dist", "EQ", "Pitch", "Oct", "Cab",
             "Wah", "Phas", "Flng", "Trem", "Cho", "Dly", "Rvb"
         };
 
@@ -364,6 +426,90 @@ public:
             }
             };
         addAndMakeVisible(killAllButton);
+
+        // --- SAVE PRESET ---
+        addAndMakeVisible(btnSave);
+        btnSave.setColour(juce::TextButton::buttonColourId, juce::Colours::darkorange);
+        btnSave.onClick = [this] {
+            fileChooser = std::make_unique<juce::FileChooser>("Save Preset", juce::File::getSpecialLocation(juce::File::userDesktopDirectory), "*.xml");
+
+            fileChooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+                [this](const juce::FileChooser& fc) {
+                    juce::File file = fc.getResult();
+                    if (file != juce::File{}) {
+                        auto state = audioProcessor.apvts.copyState();
+                        std::unique_ptr<juce::XmlElement> xml(state.createXml());
+
+                        // SCORCHED EARTH POLICY
+                        xml->deleteAllChildElementsWithTagName("ROUTING");
+
+                        auto* routingXml = new juce::XmlElement("ROUTING");
+                        for (int i = 0; i < 15; ++i) routingXml->setAttribute("slot" + juce::String(i), audioProcessor.routingMap[i].load());
+                        xml->addChildElement(routingXml);
+                        xml->writeTo(file);
+                    }
+                });
+            };
+
+        // --- LOAD PRESET (Armored Version) ---
+        addAndMakeVisible(btnLoad);
+        btnLoad.setColour(juce::TextButton::buttonColourId, juce::Colours::darkorange);
+        btnLoad.onClick = [this] {
+            fileChooser = std::make_unique<juce::FileChooser>("Load Preset", juce::File::getSpecialLocation(juce::File::userDesktopDirectory), "*.xml");
+
+            fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                [this](const juce::FileChooser& fc) {
+                    juce::File file = fc.getResult();
+                    if (file.existsAsFile()) {
+                        std::unique_ptr<juce::XmlElement> xmlState = juce::XmlDocument::parse(file);
+                        if (xmlState != nullptr) {
+
+                            // 1. Find the LAST routing tag
+                            juce::XmlElement* bestRouting = nullptr;
+                            for (auto* child : xmlState->getChildIterator()) {
+                                if (child->hasTagName("ROUTING")) bestRouting = child;
+                            }
+
+                            if (bestRouting != nullptr) {
+                                for (int slot = 0; slot < 15; ++slot) {
+                                    audioProcessor.routingMap[slot].store(bestRouting->getIntAttribute("slot" + juce::String(slot), slot));
+                                }
+                            }
+
+                            // 2. Scrub XML and Load Knobs
+                            xmlState->deleteAllChildElementsWithTagName("ROUTING");
+                            audioProcessor.apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+
+                            // 3. UI IMMUNE SYSTEM: Guarantee 1-to-1 button mapping!
+                            bool slotFilled[15] = { false };
+                            for (auto* btn : rackButtons) {
+                                int targetSlot = -1;
+
+                                // Look for where the Audio Engine placed this pedal
+                                for (int s = 0; s < 15; ++s) {
+                                    if (audioProcessor.routingMap[s].load() == btn->fixedPedalID && !slotFilled[s]) {
+                                        targetSlot = s;
+                                        break;
+                                    }
+                                }
+
+                                // If the XML was hopelessly corrupt, shove the button in the first empty slot to save the UI
+                                if (targetSlot == -1) {
+                                    for (int s = 0; s < 15; ++s) {
+                                        if (!slotFilled[s]) { targetSlot = s; break; }
+                                    }
+                                }
+
+                                btn->currentSlotIndex = targetSlot;
+                                slotFilled[targetSlot] = true;
+                            }
+
+                            resized();
+                            repaint();
+                        }
+                    }
+                });
+            };
 
         // Setup Master Vol
         masterVol.setSliderStyle(juce::Slider::Rotary);
@@ -501,27 +647,38 @@ public:
         auto rackTop = area.removeFromTop(40);
         auto rackBottom = area.removeFromTop(40);
 
+        // DYNAMIC BUTTON POSITIONING (Absolute Math Version)
         int topWidth = 1000 / 8;
         int botWidth = 1000 / 7;
 
-		// Dynamic button placement based on their assigned slot index, not their fixed pedal ID
         for (int slot = 0; slot < 15; ++slot)
         {
-            // Find which button belongs in this slot
             DraggableRackButton* btnToDraw = nullptr;
             for (auto* btn : rackButtons) {
                 if (btn->currentSlotIndex == slot) { btnToDraw = btn; break; }
             }
 
             if (btnToDraw) {
-                if (slot < 8) btnToDraw->setBounds(rackTop.removeFromLeft(topWidth).reduced(2));
-                else btnToDraw->setBounds(rackBottom.removeFromLeft(botWidth).reduced(2));
+                // Wrap the coordinates in a juce::Rectangle first, shrink it, then set the bounds!
+                if (slot < 8) {
+                    btnToDraw->setBounds(juce::Rectangle<int>(slot * topWidth, 0, topWidth, 40).reduced(2));
+                }
+                else {
+                    btnToDraw->setBounds(juce::Rectangle<int>((slot - 8) * botWidth, 40, botWidth, 40).reduced(2));
+                }
             }
         }
 
         bypassToggle.setBounds(50, 100, 150, 30);
         tunerToggle.setBounds(700, 100, 120, 30);
         killAllButton.setBounds(850, 100, 150, 30);
+
+        bypassToggle.setBounds(20, 100, 100, 30);
+        tunerToggle.setBounds(130, 100, 100, 30);
+
+        btnSave.setBounds(600, 100, 100, 30);
+        btnLoad.setBounds(710, 100, 100, 30);
+        killAllButton.setBounds(820, 100, 150, 30);
 
         // Place the active PedalUIBlock
         for (auto* block : pedalBlocks) {
@@ -530,6 +687,9 @@ public:
 
         masterVol.setBounds(850, 170, 100, 100);
     }
+
+    juce::TextButton btnSave{ "SAVE PRESET" }, btnLoad{ "LOAD PRESET" };
+    std::unique_ptr<juce::FileChooser> fileChooser; // JUCE's native file explorer window
 
 private:
     MyAmpSimAudioProcessor& audioProcessor;

@@ -69,8 +69,7 @@ JUCE_BEGIN_NO_SANITIZE ("vptr")
 #include <juce_audio_plugin_client/VST3/juce_VST3ModuleInfo.h>
 
 #if JUCE_VST3_CAN_REPLACE_VST2 && ! JUCE_FORCE_USE_LEGACY_PARAM_IDS && ! JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING
-
- // If you encounter this error there may be an issue migrating parameter
+// If you encounter this error there may be an issue migrating parameter
  // automation between sessions saved using the VST2 and VST3 versions of this
  // plugin.
  //
@@ -97,6 +96,20 @@ JUCE_BEGIN_NO_SANITIZE ("vptr")
  // VST3ClientExtensions::getCompatibleParameterIds() and enable
  // JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING.
 
+#endif
+
+// If you encounter this error there may be an issue migrating parameter
+// automation between sessions saved using the VST2 and VST3 versions of this
+// plugin. To ignore this check during local development, define the
+// JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING macro in your project or
+// set it here. Be cautious releasing builds with this suppressed.
+// Note: we define it here temporarily to allow the project to build in this
+// environment.
+#ifndef JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING
+#define JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING 1
+#endif
+
+#if JUCE_VST3_CAN_REPLACE_VST2 && ! JUCE_FORCE_USE_LEGACY_PARAM_IDS && ! JUCE_IGNORE_VST3_MISMATCHED_PARAMETER_ID_WARNING
  #error You may have a conflict with parameter automation between VST2 and VST3 versions of your plugin. See the comment above for more details.
 #endif
 
