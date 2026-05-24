@@ -794,3 +794,115 @@ private:
     std::atomic<float>* waveType, * mix, * pitchHz;
     double currentSampleRate = 48000.0;
 };
+
+// --- PEDAL 18: THE AUDIO LOOPER ---
+class LooperPedal : public AudioEffect
+{
+public:
+    LooperPedal(std::atomic<float>* stateParam, std::atomic<float>* levelParam)
+        : state(stateParam), level(levelParam) {
+    }
+
+    void prepare(double sampleRate, int samplesPerBlock) override
+    {
+        // Allocate exactly 60 seconds of stereo RAM (approx 23 MB)
+		// Memory allocation must happen here, never in the real-time audio thread bcause it can cause dropouts
+        int maxSamples = static_cast<int>(sampleRate * 60.0);
+        looperBuffer.setSize(2, maxSamples);
+        looperBuffer.clear();
+
+        writePos = 0;
+        readPos = 0;
+        loopLength = 0;
+        lastState = 0;
+    }
+
+    void process(juce::AudioBuffer<float>& buffer) override
+    {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
+        int currentState = static_cast<int>(state->load()); // 0:Stop, 1:Rec, 2:Play, 3:Dub
+        float currentLevel = level->load();
+
+        // STATE MACHINE LOGIC
+        if (currentState != lastState)
+        {
+            if (currentState == 1) // Transition to RECORD
+            {
+                writePos = 0;
+                loopLength = 0;
+                looperBuffer.clear(); // Erase old loop
+            }
+            else if (lastState == 1 && (currentState == 2 || currentState == 3))
+            {
+                // Transitioning out of Record: Lock in the total loop length
+                loopLength = writePos;
+                readPos = 0;
+            }
+            else if (currentState == 0) // Transition to stop
+            {
+                readPos = 0;
+                writePos = 0;
+            }
+            lastState = currentState;
+        }
+
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        {
+            auto* channelData = buffer.getWritePointer(channel);
+            auto* loopData = looperBuffer.getWritePointer(channel);
+
+            // Local variables ensure L/R stereo channels stay perfectly synced
+            int localWrite = writePos;
+            int localRead = readPos;
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                float inSample = channelData[i];
+                float outSample = inSample; // Always pass dry signal through
+
+                if (currentState == 1) // RECORDING
+                {
+                    if (localWrite < looperBuffer.getNumSamples()) {
+                        loopData[localWrite] = inSample;
+                        localWrite++;
+                    }
+                }
+                else if (currentState == 2 && loopLength > 0) // PLAYING
+                {
+                    float recordedSample = loopData[localRead];
+                    outSample = inSample + (recordedSample * currentLevel);
+
+                    localRead++;
+                    if (localRead >= loopLength) localRead = 0;
+                }
+                else if (currentState == 3 && loopLength > 0) // OVERDUBBING
+                {
+                    // 1. Read existing tape
+                    float recordedSample = loopData[localRead];
+                    // 2. Write new mix back to tape
+                    loopData[localRead] = recordedSample + inSample;
+                    // 3. Output the combined mix
+                    outSample = inSample + (loopData[localRead] * currentLevel);
+
+                    localRead++;
+                    if (localRead >= loopLength) localRead = 0;
+                }
+
+                channelData[i] = outSample;
+            }
+
+            // Push local pointers back to class state once per block
+            if (channel == buffer.getNumChannels() - 1) {
+                writePos = localWrite;
+                readPos = localRead;
+            }
+        }
+    }
+    juce::String getName() const override { return "Looper"; }
+
+private:
+    juce::AudioBuffer<float> looperBuffer;
+    int writePos = 0, readPos = 0, loopLength = 0, lastState = 0;
+    std::atomic<float>* state, * level;
+};

@@ -17,7 +17,7 @@ public:
     // THE PEDALBOARD
     std::vector<std::unique_ptr<AudioEffect>> pedalboard;
     
-    std::atomic<int> routingMap[17];
+    std::atomic<int> routingMap[18];
 
     MyAmpSimAudioProcessor()
         : AudioProcessor(BusesProperties().withInput("Input", juce::AudioChannelSet::stereo(), true)
@@ -35,7 +35,7 @@ public:
         pedalboard.push_back(std::make_unique<OctaverPedal>(apvts.getRawParameterValue("oct_semi"), apvts.getRawParameterValue("oct_mix")));
         pedalboard.push_back(std::make_unique<CabinetPedal>());
 
-        // 8-16: Modulation and Time (Bottom Row)
+        // 8-18: Modulation and Time (Bottom Row)
         pedalboard.push_back(std::make_unique<AutoWahPedal>(apvts.getRawParameterValue("wah_rate"), apvts.getRawParameterValue("wah_depth"), apvts.getRawParameterValue("wah_q")));
         pedalboard.push_back(std::make_unique<PhaserPedal>(apvts.getRawParameterValue("phs_rate"), apvts.getRawParameterValue("phs_depth"), apvts.getRawParameterValue("phs_freq"), apvts.getRawParameterValue("phs_feed")));
         pedalboard.push_back(std::make_unique<FlangerPedal>(apvts.getRawParameterValue("flg_rate"), apvts.getRawParameterValue("flg_depth"), apvts.getRawParameterValue("flg_feed")));
@@ -45,6 +45,7 @@ public:
         pedalboard.push_back(std::make_unique<ReverbPedal>(apvts.getRawParameterValue("rvb_room"), apvts.getRawParameterValue("rvb_damp"), apvts.getRawParameterValue("rvb_mix")));
         pedalboard.push_back(std::make_unique<AcousticSimPedal>(apvts.getRawParameterValue("ac_body"), apvts.getRawParameterValue("ac_air"), apvts.getRawParameterValue("ac_reso")));
         pedalboard.push_back(std::make_unique<GuitarSynthPedal>(apvts.getRawParameterValue("syn_type"), apvts.getRawParameterValue("syn_mix"), &currentPitchHz));
+        pedalboard.push_back(std::make_unique<LooperPedal>(apvts.getRawParameterValue("loop_state"), apvts.getRawParameterValue("loop_level")));
         
         // Setup Routing mapping and FORCE default state to Bypassed (Off)
         for (int i = 0; i < pedalboard.size(); ++i) {
@@ -97,7 +98,7 @@ public:
 
 
         // PROCESS AUDIO USING THE DYNAMIC ROUTING MAP
-        for (int i = 0; i < 17; ++i)
+        for (int i = 0; i < 18; ++i)
         {
             // Read the map to find out which pedal is currently in slot 'i'
             int pedalIndex = routingMap[i].load();
@@ -127,7 +128,7 @@ public:
         xml->deleteAllChildElementsWithTagName("ROUTING");
 
         auto* routingXml = new juce::XmlElement("ROUTING");
-        for (int i = 0; i < 17; ++i) routingXml->setAttribute("slot" + juce::String(i), routingMap[i].load());
+        for (int i = 0; i < 18; ++i) routingXml->setAttribute("slot" + juce::String(i), routingMap[i].load());
 
         xml->addChildElement(routingXml);
         copyXmlToBinary(*xml, destData);
@@ -145,12 +146,12 @@ public:
             }
 
             if (bestRouting != nullptr) {
-                bool isPedalUsed[17] = { false };
+                bool isPedalUsed[18] = { false };
 
                 // 2. Try to load the slots safely
-                for (int slot = 0; slot < 17; ++slot) {
+                for (int slot = 0; slot < 18; ++slot) {
                     int pedalID = bestRouting->getIntAttribute("slot" + juce::String(slot), slot);
-                    if (pedalID >= 0 && pedalID < 17 && !isPedalUsed[pedalID]) {
+                    if (pedalID >= 0 && pedalID < 18 && !isPedalUsed[pedalID]) {
                         routingMap[slot].store(pedalID);
                         isPedalUsed[pedalID] = true;
                     }
@@ -160,9 +161,9 @@ public:
                 }
 
                 // 3. Heal any corrupted/missing slots
-                for (int slot = 0; slot < 17; ++slot) {
+                for (int slot = 0; slot < 18; ++slot) {
                     if (routingMap[slot].load() == -1) {
-                        for (int p = 0; p < 17; ++p) { // Find a pedal not yet on the board
+                        for (int p = 0; p < 18; ++p) { // Find a pedal not yet on the board
                             if (!isPedalUsed[p]) {
                                 routingMap[slot].store(p);
                                 isPedalUsed[p] = true;
@@ -254,6 +255,10 @@ private:
         layout.add(std::make_unique<juce::AudioParameterChoice>("syn_type", "Waveform", juce::StringArray{ "Sine", "Square", "Saw" }, 1));
         layout.add(std::make_unique<juce::AudioParameterFloat>("syn_mix", "Synth Mix", 0.0f, 1.0f, 0.5f));
 
+        // Looper 
+        layout.add(std::make_unique<juce::AudioParameterChoice>("loop_state", "State", juce::StringArray{ "Stop", "Record", "Play", "Dub" }, 0));
+        layout.add(std::make_unique<juce::AudioParameterFloat>("loop_level", "Loop Vol", 0.0f, 1.0f, 0.8f));
+
         // Master Volume
         layout.add(std::make_unique<juce::AudioParameterFloat>("master_vol", "Master Volume", 0.0f, 3.0f, 1.0f));
 
@@ -278,6 +283,7 @@ private:
         layout.add(std::make_unique<juce::AudioParameterBool>("byp_14", "Bypass", true));
         layout.add(std::make_unique<juce::AudioParameterBool>("byp_15", "Bypass", true));
         layout.add(std::make_unique<juce::AudioParameterBool>("byp_16", "Bypass", true));
+        layout.add(std::make_unique<juce::AudioParameterBool>("byp_17", "Bypass", true));
 
         return layout;
     }
@@ -404,10 +410,10 @@ public:
         // 1. SETUP TOP RACK BUTTONS
         juce::StringArray pedalNames = {
             "Gate", "Comp", "Boost", "Dist", "EQ", "Pitch", "Oct", "Cab",
-            "Wah", "Phas", "Flng", "Trem", "Cho", "Dly", "Rvb", "Acoust", "Synth"
+            "Wah", "Phas", "Flng", "Trem", "Cho", "Dly", "Rvb", "Acoust", "Synth", "Loop"
         };
 
-        for (int i = 0; i < 17; ++i) {
+        for (int i = 0; i < 18; ++i) {
             auto* btn = new DraggableRackButton(pedalNames[i], i);
             btn->currentSlotIndex = i; // Initially the slot matches ID
 
@@ -462,7 +468,7 @@ public:
                         xml->deleteAllChildElementsWithTagName("ROUTING");
 
                         auto* routingXml = new juce::XmlElement("ROUTING");
-                        for (int i = 0; i < 17; ++i) routingXml->setAttribute("slot" + juce::String(i), audioProcessor.routingMap[i].load());
+                        for (int i = 0; i < 18; ++i) routingXml->setAttribute("slot" + juce::String(i), audioProcessor.routingMap[i].load());
                         xml->addChildElement(routingXml);
                         xml->writeTo(file);
                     }
@@ -489,7 +495,7 @@ public:
                             }
 
                             if (bestRouting != nullptr) {
-                                for (int slot = 0; slot < 17; ++slot) {
+                                for (int slot = 0; slot < 18; ++slot) {
                                     audioProcessor.routingMap[slot].store(bestRouting->getIntAttribute("slot" + juce::String(slot), slot));
                                 }
                             }
@@ -499,12 +505,12 @@ public:
                             audioProcessor.apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
 
                             // 3. UI IMMUNE SYSTEM: Guarantee 1-to-1 button mapping
-                            bool slotFilled[17] = { false };
+                            bool slotFilled[18] = { false };
                             for (auto* btn : rackButtons) {
                                 int targetSlot = -1;
 
                                 // Look for where the Audio Engine placed this pedal
-                                for (int s = 0; s < 17; ++s) {
+                                for (int s = 0; s < 18; ++s) {
                                     if (audioProcessor.routingMap[s].load() == btn->fixedPedalID && !slotFilled[s]) {
                                         targetSlot = s;
                                         break;
@@ -513,7 +519,7 @@ public:
 
                                 // If the XML was hopelessly corrupt, shove the button in the first empty slot to save the UI
                                 if (targetSlot == -1) {
-                                    for (int s = 0; s < 17; ++s) {
+                                    for (int s = 0; s < 18; ++s) {
                                         if (!slotFilled[s]) { targetSlot = s; break; }
                                     }
                                 }
@@ -553,6 +559,7 @@ public:
         pedalBlocks.add(new PedalUIBlock(p.apvts, { "rvb_room", "rvb_damp", "rvb_mix" }));
         pedalBlocks.add(new PedalUIBlock(p.apvts, { "ac_body", "ac_air", "ac_reso" }));
         pedalBlocks.add(new PedalUIBlock(p.apvts, { "syn_mix" }, "syn_type", { "Sine", "Square", "Saw" }));
+        pedalBlocks.add(new PedalUIBlock(p.apvts, { "loop_level" }, "loop_state", { "Stop", "Record", "Play", "Dub" }));
 
         // Add them to the UI but keep them hidden initially
         for (auto* block : pedalBlocks) addChildComponent(block);
@@ -583,7 +590,7 @@ public:
     {
         bool needsRepaint = false;
 
-        for (int i = 0; i < 17; ++i) {
+        for (int i = 0; i < 18; ++i) {
             auto* paramPtr = audioProcessor.apvts.getRawParameterValue("byp_" + juce::String(i));
             if (paramPtr != nullptr) {
                 bool isOff = paramPtr->load() > 0.5f;
@@ -669,9 +676,9 @@ public:
 
         // DYNAMIC BUTTON POSITIONING (Absolute Math Version)
         int topWidth = 1000 / 9;
-        int botWidth = 1000 / 8;
+        int botWidth = 1000 / 9;
 
-        for (int slot = 0; slot < 17; ++slot)
+        for (int slot = 0; slot < 18; ++slot)
         {
             DraggableRackButton* btnToDraw = nullptr;
             for (auto* btn : rackButtons) {
@@ -715,7 +722,7 @@ private:
     MyAmpSimAudioProcessor& audioProcessor;
     int currentSelectedPedalID = 0; // Tracks which pedal's knobs are visible
     float lastHz = 0.0f;
-    bool pedalStates[17] = { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true };
+    bool pedalStates[18] = { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true };
 
     juce::OwnedArray<DraggableRackButton> rackButtons; 
     juce::OwnedArray<PedalUIBlock> pedalBlocks;
