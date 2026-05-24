@@ -10,6 +10,7 @@ class MyAmpSimAudioProcessor : public juce::AudioProcessor
 public:
     GuitarTuner tuner;
     std::atomic<float> currentPitchHz{ 0.0f }; // So the GUI can read it
+    std::atomic<float> outputPeak{ 0.0f }; // Tracks the master output volume
 
     // THE CENTRAL DATABASE
     juce::AudioProcessorValueTreeState apvts;
@@ -106,6 +107,10 @@ public:
         }
 
         buffer.applyGain(apvts.getRawParameterValue("master_vol")->load());
+
+        // Calculate the maximum volume of this block and send it to the UI
+        float currentPeak = buffer.getMagnitude(0, buffer.getNumSamples());
+        outputPeak.store(currentPeak);
     }
 
     juce::AudioProcessorEditor* createEditor() override;
@@ -321,6 +326,64 @@ public:
     }
 };
 
+// CUSTOM 3D GRAPHICS ENGINE
+class CustomLookAndFeel : public juce::LookAndFeel_V4
+{
+public:
+    CustomLookAndFeel()
+    {
+        // Make the text box beneath the knob transparent with white text
+        setColour(juce::Slider::textBoxTextColourId, juce::Colours::white);
+        setColour(juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+    }
+
+    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
+        float sliderPos, const float rotaryStartAngle,
+        const float rotaryEndAngle, juce::Slider& slider) override
+    {
+        auto radius = (float)juce::jmin(width / 2, height / 2) - 4.0f;
+        auto centreX = (float)x + (float)width * 0.5f;
+        auto centreY = (float)y + (float)height * 0.5f;
+        auto rx = centreX - radius;
+        auto ry = centreY - radius;
+        auto rw = radius * 2.0f;
+        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+
+        // 1. Drop Shadow
+        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.fillEllipse(rx + 2.0f, ry + 4.0f, rw, rw);
+
+        // 2. Metallic Base Ring 
+        juce::ColourGradient baseGrad(juce::Colour(180, 180, 180), centreX, ry,
+            juce::Colour(60, 60, 60), centreX, ry + rw, false);
+        g.setGradientFill(baseGrad);
+        g.fillEllipse(rx, ry, rw, rw);
+
+        // 3. Dark Rubber Grip 
+        auto gripRadius = radius - 3.0f;
+        juce::ColourGradient gripGrad(juce::Colour(40, 40, 40), centreX, centreY - gripRadius,
+            juce::Colour(10, 10, 10), centreX, centreY + gripRadius, false);
+        g.setGradientFill(gripGrad);
+        g.fillEllipse(centreX - gripRadius, centreY - gripRadius, gripRadius * 2.0f, gripRadius * 2.0f);
+
+        // 4. Glowing Cyan Indicator Line
+        juce::Path p;
+        auto pointerLength = radius * 0.55f;
+        auto pointerThickness = 3.0f;
+        p.addRoundedRectangle(-pointerThickness * 0.5f, -radius + 5.0f, pointerThickness, pointerLength, 1.5f);
+        p.applyTransform(juce::AffineTransform::rotation(angle).translated(centreX, centreY));
+
+        g.setColour(juce::Colours::cyan);
+        g.fillPath(p);
+
+        // 5. LED Bloom/Glow on the tip
+        g.setColour(juce::Colours::cyan.withAlpha(0.4f));
+        g.fillEllipse(centreX + std::sin(angle) * (radius - 9.0f) - 4.0f,
+            centreY - std::cos(angle) * (radius - 9.0f) - 4.0f, 8.0f, 8.0f);
+    }
+};
+
+
 // DYNAMIC UI FACTORY COMPONENT
 class PedalUIBlock : public juce::Component
 {
@@ -353,25 +416,41 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        g.setColour(juce::Colours::white);
-        g.setFont(20.0f);
+        auto area = getLocalBounds().reduced(5); // Shrink slightly to leave room for the shadow
 
-        // Edge Case: Cabinet Simulator has no parameters
+        // 1. Enclosure Drop Shadow
+        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.fillRoundedRectangle(area.translated(4, 5).toFloat(), 10.0f);
+
+        // 2. Dark Metallic Chassis 
+        juce::ColourGradient pedalGrad(juce::Colour(60, 65, 70), 0, 0,
+            juce::Colour(20, 22, 25), 0, (float)area.getHeight(), false);
+        g.setGradientFill(pedalGrad);
+        g.fillRoundedRectangle(area.toFloat(), 10.0f);
+
+        // 3. Inner Chrome Lip
+        g.setColour(juce::Colours::grey.withAlpha(0.3f));
+        g.drawRoundedRectangle(area.toFloat(), 10.0f, 1.5f);
+
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(16.0f, juce::Font::bold)); // Bolder, cleaner font
+
+        // Edge Case: Cabinet Simulator
         if (sliderIDs.isEmpty() && comboID.isEmpty()) {
-            g.drawText("Cabinet IR Loaded. No parameters to edit.", 0, 10, 400, 20, juce::Justification::centredLeft);
+            g.drawText("Cabinet IR Loaded. No parameters to edit.", 20, 20, 400, 20, juce::Justification::centredLeft);
             return;
         }
 
-        // Draw Labels dynamically by asking the APVTS for the parameter's real name
+        // Draw Labels
         int x = 0;
         for (auto& id : sliderIDs) {
             juce::String name = apvts.getParameter(id)->getName(100);
-            g.drawText(name, x, 0, 100, 20, juce::Justification::centred);
-            x += 130; // Shift right for the next label
+            g.drawText(name, x, 10, 100, 20, juce::Justification::centred);
+            x += 130;
         }
         if (comboID.isNotEmpty()) {
             juce::String name = apvts.getParameter(comboID)->getName(100);
-            g.drawText(name, x, 0, 100, 20, juce::Justification::centred);
+            g.drawText(name, x, 10, 100, 20, juce::Justification::centred);
         }
     }
 
@@ -399,6 +478,108 @@ private:
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAttachment;
 };
 
+// CUSTOM LOOPER UI BLOCK
+class LooperUIBlock : public juce::Component, public juce::Timer
+{
+public:
+    LooperUIBlock(juce::AudioProcessorValueTreeState& state) : apvts(state)
+    {
+        // 1. Setup Custom Transport Buttons
+        setupButton(btnStop, "STOP", juce::Colours::darkgrey);
+        setupButton(btnRec, "REC", juce::Colours::darkred);
+        setupButton(btnPlay, "PLAY", juce::Colours::darkgreen);
+        setupButton(btnDub, "DUB", juce::Colours::orange);
+
+        // 2. Setup Loop Volume Knob
+        levelKnob.setSliderStyle(juce::Slider::Rotary);
+        levelKnob.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+        addAndMakeVisible(levelKnob);
+        levelAttach = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(apvts, "loop_level", levelKnob);
+
+        startTimerHz(15); // Start the LED checking timer
+    }
+
+    void setupButton(juce::TextButton& btn, const juce::String& text, juce::Colour baseColor)
+    {
+        btn.setButtonText(text);
+        btn.setColour(juce::TextButton::buttonColourId, baseColor.withAlpha(0.3f)); // Dim when off
+        addAndMakeVisible(btn);
+
+        // When clicked, safely write the new state integer into the APVTS database
+        btn.onClick = [this, &btn, text] {
+            int stateVal = 0;
+            if (text == "REC") stateVal = 1;
+            else if (text == "PLAY") stateVal = 2;
+            else if (text == "DUB") stateVal = 3;
+
+            // Convert the integer (0-3) into the 0.0-1.0 float format the DAW expects
+            if (auto* p = apvts.getParameter("loop_state")) {
+                p->setValueNotifyingHost(p->convertTo0to1((float)stateVal));
+            }
+            };
+    }
+
+    void timerCallback() override
+    {
+        // Read the current state from the Audio Thread
+        int currentState = static_cast<int>(apvts.getRawParameterValue("loop_state")->load());
+
+        // 1. Reset all buttons to dim background with WHITE text
+        btnStop.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgrey.withAlpha(0.3f));
+        btnStop.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+
+        btnRec.setColour(juce::TextButton::buttonColourId, juce::Colours::darkred.withAlpha(0.3f));
+        btnPlay.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgreen.withAlpha(0.3f));
+        btnDub.setColour(juce::TextButton::buttonColourId, juce::Colours::orange.withAlpha(0.3f));
+
+        // 2. Illuminate active state
+        if (currentState == 0) {
+            btnStop.setColour(juce::TextButton::buttonColourId, juce::Colours::white);
+            btnStop.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
+        }
+        else if (currentState == 1) btnRec.setColour(juce::TextButton::buttonColourId, juce::Colours::red);
+        else if (currentState == 2) btnPlay.setColour(juce::TextButton::buttonColourId, juce::Colours::limegreen);
+        else if (currentState == 3) btnDub.setColour(juce::TextButton::buttonColourId, juce::Colours::yellow);
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        // Draw the exact same physical pedal chassis as the standard blocks
+        auto area = getLocalBounds().reduced(5);
+        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.fillRoundedRectangle(area.translated(4, 5).toFloat(), 10.0f);
+
+        juce::ColourGradient pedalGrad(juce::Colour(60, 65, 70), 0, 0,
+            juce::Colour(20, 22, 25), 0, (float)area.getHeight(), false);
+        g.setGradientFill(pedalGrad);
+        g.fillRoundedRectangle(area.toFloat(), 10.0f);
+
+        g.setColour(juce::Colours::grey.withAlpha(0.3f));
+        g.drawRoundedRectangle(area.toFloat(), 10.0f, 1.5f);
+
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(16.0f, juce::Font::bold));
+        g.drawText("Loop Vol", 430, 10, 100, 20, juce::Justification::centred);
+    }
+
+    void resized() override
+    {
+        // Draw big hardware transport buttons
+        btnStop.setBounds(20, 40, 80, 60);
+        btnRec.setBounds(110, 40, 80, 60);
+        btnPlay.setBounds(200, 40, 80, 60);
+        btnDub.setBounds(290, 40, 80, 60);
+
+        levelKnob.setBounds(430, 30, 100, 100);
+    }
+
+private:
+    juce::AudioProcessorValueTreeState& apvts;
+    juce::TextButton btnStop, btnRec, btnPlay, btnDub;
+    juce::Slider levelKnob;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> levelAttach;
+};
+
 // THE MAIN EDITOR
 class MyAmpSimEditor : public juce::AudioProcessorEditor, public juce::Timer, public juce::DragAndDropContainer
 {
@@ -406,6 +587,21 @@ public:
     MyAmpSimEditor(MyAmpSimAudioProcessor& p) : AudioProcessorEditor(&p), audioProcessor(p)
     {
         setSize(1000, 380);
+
+        setLookAndFeel(&customLaf);
+
+        addAndMakeVisible(btnBg);
+        btnBg.setColour(juce::TextButton::buttonColourId, juce::Colours::darkslateblue);
+        btnBg.onClick = [this] {
+            fileChooser = std::make_unique<juce::FileChooser>("Select Background", juce::File::getSpecialLocation(juce::File::userPicturesDirectory), "*.jpg;*.jpeg;*.png");
+            fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+                [this](const juce::FileChooser& fc) {
+                    if (fc.getResult().existsAsFile()) {
+                        backgroundImage = juce::ImageCache::getFromFile(fc.getResult());
+                        repaint();
+                    }
+                });
+        };
 
         // 1. SETUP TOP RACK BUTTONS
         juce::StringArray pedalNames = {
@@ -559,13 +755,18 @@ public:
         pedalBlocks.add(new PedalUIBlock(p.apvts, { "rvb_room", "rvb_damp", "rvb_mix" }));
         pedalBlocks.add(new PedalUIBlock(p.apvts, { "ac_body", "ac_air", "ac_reso" }));
         pedalBlocks.add(new PedalUIBlock(p.apvts, { "syn_mix" }, "syn_type", { "Sine", "Square", "Saw" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "loop_level" }, "loop_state", { "Stop", "Record", "Play", "Dub" }));
+        pedalBlocks.add(new LooperUIBlock(p.apvts));
 
         // Add them to the UI but keep them hidden initially
         for (auto* block : pedalBlocks) addChildComponent(block);
 
         updateVisibilities();
         startTimerHz(30);
+    }
+
+    ~MyAmpSimEditor() override
+    {
+        setLookAndFeel(nullptr);
     }
 
     void swapRouting(int slotA, int slotB)
@@ -607,6 +808,11 @@ public:
             needsRepaint = true;
         }
 
+        float peak = audioProcessor.outputPeak.load();
+        // Smooth logarithmic decay for the volume meter
+        meterLevel = meterLevel * 0.85f + peak * 0.15f;
+        if (meterLevel > 0.005f || peak > 0.005f) needsRepaint = true;
+
         if (needsRepaint) repaint();
     }
 
@@ -633,14 +839,31 @@ public:
         g.setColour(juce::Colours::darkred);
         g.drawLine(0, 40, 1000, 40, 2.0f);
 
-        // Update color logic to use fixedPedalID
+        // Draw Custom Image OR Dark Studio Gradient
+        if (backgroundImage.isValid()) {
+            g.drawImage(backgroundImage, getLocalBounds().toFloat(), juce::RectanglePlacement::fillDestination);
+        }
+        else {
+            juce::ColourGradient bgGrad(juce::Colour(35, 40, 45), 0, 0,
+                juce::Colour(10, 12, 15), 0, (float)getHeight(), false);
+            g.setGradientFill(bgGrad);
+            g.fillAll();
+        }
+
+        // Draw Top Rack Shadow/Background
+        g.setColour(juce::Colours::black.withAlpha(0.5f));
+        g.fillRect(0, 0, 1000, 85);
+        g.setColour(juce::Colours::darkred);
+        g.drawLine(0, 40, 1000, 40, 2.0f);
+        g.drawLine(0, 85, 1000, 85, 3.0f);
+
+        // Give the rack buttons a uniform, dark hardware look. Highlight blue if selected.
         for (auto* btn : rackButtons) {
             if (currentSelectedPedalID == btn->fixedPedalID) {
-                btn->setColour(juce::TextButton::buttonColourId, juce::Colours::dodgerblue);
+                btn->setColour(juce::TextButton::buttonColourId, juce::Colours::dodgerblue.withAlpha(0.5f));
             }
             else {
-                bool isBypassed = pedalStates[btn->fixedPedalID];
-                btn->setColour(juce::TextButton::buttonColourId, isBypassed ? juce::Colours::darkgrey : juce::Colours::limegreen);
+                btn->setColour(juce::TextButton::buttonColourId, juce::Colours::black.withAlpha(0.3f));
             }
         }
 
@@ -668,13 +891,59 @@ public:
         g.drawText("Master Vol", 850, 140, 100, 20, juce::Justification::centred);
     }
 
+    void paintOverChildren(juce::Graphics& g) override
+    {
+		// glowing LEDs for active pedals in the rack
+        for (auto* btn : rackButtons) {
+            bool isBypassed = pedalStates[btn->fixedPedalID];
+            juce::Colour ledColor = isBypassed ? juce::Colours::darkred.withAlpha(0.3f) : juce::Colours::limegreen;
+
+            // Get the button's exact coordinates and place the LED in the top-left corner
+            auto bounds = btn->getBounds();
+            float ledX = (float)bounds.getX() + 6.0f;
+            float ledY = (float)bounds.getY() + 6.0f;
+
+            // Draw Bloom/Glow if Active
+            if (!isBypassed) {
+                g.setColour(ledColor.withAlpha(0.4f));
+                g.fillEllipse(ledX - 3.0f, ledY - 3.0f, 14.0f, 14.0f);
+            }
+            // Draw Solid Core
+            g.setColour(ledColor);
+            g.fillEllipse(ledX, ledY, 8.0f, 8.0f);
+        }
+
+		// master volume meter (simple vertical bar on the right)
+        juce::Rectangle<float> meterBounds(960.0f, 170.0f, 15.0f, 100.0f);
+
+        // Background track
+        g.setColour(juce::Colours::black.withAlpha(0.8f));
+        g.fillRoundedRectangle(meterBounds, 3.0f);
+
+        // Calculate height based on volume (Capped at 1.2 for headroom visual)
+        float levelHeight = juce::jmin(meterLevel, 1.2f) / 1.2f * meterBounds.getHeight();
+        juce::Rectangle<float> fillBounds = meterBounds.withTrimmedTop(meterBounds.getHeight() - levelHeight);
+
+        // Gradient: Green -> Yellow -> Red (Clipping)
+        juce::ColourGradient meterGrad(juce::Colours::red, meterBounds.getX(), meterBounds.getY(),
+            juce::Colours::limegreen, meterBounds.getX(), meterBounds.getBottom(), false);
+        meterGrad.addColour(0.3, juce::Colours::yellow);
+
+        g.setGradientFill(meterGrad);
+        g.fillRoundedRectangle(fillBounds, 3.0f);
+
+        // Draw Chrome bezel around meter
+        g.setColour(juce::Colours::grey.withAlpha(0.4f));
+        g.drawRoundedRectangle(meterBounds, 3.0f, 1.0f);
+    }
+
     void resized() override
     {
         auto area = getLocalBounds();
         auto rackTop = area.removeFromTop(40);
         auto rackBottom = area.removeFromTop(40);
 
-        // DYNAMIC BUTTON POSITIONING (Absolute Math Version)
+        // Dynamic button positioning
         int topWidth = 1000 / 9;
         int botWidth = 1000 / 9;
 
@@ -713,19 +982,25 @@ public:
         }
 
         masterVol.setBounds(850, 170, 100, 100);
+        btnBg.setBounds(960, 340, 30, 30);
     }
 
     juce::TextButton btnSave{ "SAVE PRESET" }, btnLoad{ "LOAD PRESET" };
     std::unique_ptr<juce::FileChooser> fileChooser; // JUCE's native file explorer window
+    
+    CustomLookAndFeel customLaf;
+    juce::Image backgroundImage;
+    juce::TextButton btnBg{ "BG" };
 
 private:
     MyAmpSimAudioProcessor& audioProcessor;
     int currentSelectedPedalID = 0; // Tracks which pedal's knobs are visible
     float lastHz = 0.0f;
-    bool pedalStates[18] = { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true };
+    float meterLevel = 0.0f; // Smooths out the meter animation
+    bool pedalStates[18] = { true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true };
 
     juce::OwnedArray<DraggableRackButton> rackButtons; 
-    juce::OwnedArray<PedalUIBlock> pedalBlocks;
+    juce::OwnedArray<juce::Component> pedalBlocks;
 
     juce::TextButton killAllButton;
     juce::ToggleButton bypassToggle, tunerToggle;
