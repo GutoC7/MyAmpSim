@@ -529,17 +529,31 @@ public:
         btnStop.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 
         btnRec.setColour(juce::TextButton::buttonColourId, juce::Colours::darkred.withAlpha(0.3f));
+		btnRec.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+
         btnPlay.setColour(juce::TextButton::buttonColourId, juce::Colours::darkgreen.withAlpha(0.3f));
+		btnPlay.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
+
         btnDub.setColour(juce::TextButton::buttonColourId, juce::Colours::orange.withAlpha(0.3f));
+        btnDub.setColour(juce::TextButton::textColourOffId, juce::Colours::white);
 
         // 2. Illuminate active state
         if (currentState == 0) {
             btnStop.setColour(juce::TextButton::buttonColourId, juce::Colours::white);
             btnStop.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
         }
-        else if (currentState == 1) btnRec.setColour(juce::TextButton::buttonColourId, juce::Colours::red);
-        else if (currentState == 2) btnPlay.setColour(juce::TextButton::buttonColourId, juce::Colours::limegreen);
-        else if (currentState == 3) btnDub.setColour(juce::TextButton::buttonColourId, juce::Colours::yellow);
+        else if (currentState == 1) {
+            btnRec.setColour(juce::TextButton::buttonColourId, juce::Colours::red);
+            btnRec.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
+        } 
+        else if (currentState == 2) {
+            btnPlay.setColour(juce::TextButton::buttonColourId, juce::Colours::limegreen);
+			btnPlay.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
+        }
+        else if (currentState == 3) {
+            btnDub.setColour(juce::TextButton::buttonColourId, juce::Colours::yellow);
+            btnDub.setColour(juce::TextButton::textColourOffId, juce::Colours::black);
+        }
     }
 
     void paint(juce::Graphics& g) override
@@ -590,18 +604,33 @@ public:
 
         setLookAndFeel(&customLaf);
 
+        // SETUP BACKGROUND LOADER
         addAndMakeVisible(btnBg);
         btnBg.setColour(juce::TextButton::buttonColourId, juce::Colours::darkslateblue);
+        btnBg.setTooltip("Load Custom Background");
+
+        // SETUP BACKGROUND CLEAR BUTTON
+        addChildComponent(btnClearBg); // addChildComponent keeps it hidden by default
+        btnClearBg.setColour(juce::TextButton::buttonColourId, juce::Colours::darkred);
+        btnClearBg.setTooltip("Clear Background");
+
+        btnClearBg.onClick = [this] {
+            backgroundImage = juce::Image(); // Nullify the image
+            btnClearBg.setVisible(false);    // Hide the button again
+            repaint();
+            };
+
         btnBg.onClick = [this] {
             fileChooser = std::make_unique<juce::FileChooser>("Select Background", juce::File::getSpecialLocation(juce::File::userPicturesDirectory), "*.jpg;*.jpeg;*.png");
             fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                 [this](const juce::FileChooser& fc) {
                     if (fc.getResult().existsAsFile()) {
                         backgroundImage = juce::ImageCache::getFromFile(fc.getResult());
+                        btnClearBg.setVisible(true); // Reveal the clear button
                         repaint();
                     }
                 });
-        };
+            };
 
         // 1. SETUP TOP RACK BUTTONS
         juce::StringArray pedalNames = {
@@ -982,6 +1011,7 @@ public:
         }
 
         masterVol.setBounds(850, 170, 100, 100);
+        btnClearBg.setBounds(960, 305, 30, 30);
         btnBg.setBounds(960, 340, 30, 30);
     }
 
@@ -990,7 +1020,7 @@ public:
     
     CustomLookAndFeel customLaf;
     juce::Image backgroundImage;
-    juce::TextButton btnBg{ "BG" };
+    juce::TextButton btnBg{ "BG" }, btnClearBg{ "X" };
 
 private:
     MyAmpSimAudioProcessor& audioProcessor;
