@@ -11,6 +11,9 @@ public:
     {
         setSize(1000, 380);
 
+        setResizable(true, true);
+        setResizeLimits(1000, 380, 3000, 1600);
+
         setLookAndFeel(&customLaf);
 
         // SETUP BACKGROUND LOADER
@@ -84,6 +87,32 @@ public:
             }
             };
         addAndMakeVisible(killAllButton);
+
+        // --- PRESET DRAWER SETUP ---
+        addAndMakeVisible(btnTogglePresets);
+        btnTogglePresets.setColour(juce::TextButton::buttonColourId, juce::Colours::dodgerblue.withAlpha(0.5f));
+        btnTogglePresets.onClick = [this] {
+            // Toggle the target position on or off screen
+            targetDrawerX = (targetDrawerX < 0.0f) ? 0.0f : -250.0f;
+            if (targetDrawerX == 0.0f){
+                presetDrawer->refreshPresets(); // Scan for new files when opened
+                presetDrawer->toFront(false);
+            }
+        };
+
+        presetDrawer = std::make_unique<PresetDrawer>(audioProcessor.presetDirectory,
+            [this](const juce::File& f) {
+                audioProcessor.loadPresetSilently(f);
+
+                // Close the drawer and force the UI to update the knobs/pedals
+                targetDrawerX = -250.0f;
+                updateVisibilities();
+                repaint();
+            });
+
+        // Add the drawer last so it always draws ON TOP of the pedals
+        addChildComponent(presetDrawer.get());
+        presetDrawer->setVisible(true);
 
         // --- SAVE PRESET ---
         addAndMakeVisible(btnSave);
@@ -255,6 +284,13 @@ public:
         meterLevel = meterLevel * 0.85f + peak * 0.15f;
         if (meterLevel > 0.005f || peak > 0.005f) needsRepaint = true;
 
+        // Smooth slide animation for the Preset Drawer
+        if (std::abs(currentDrawerX - targetDrawerX) > 0.5f) {
+            currentDrawerX = currentDrawerX * 0.7f + targetDrawerX * 0.3f;
+            presetDrawer->setBounds((int)currentDrawerX, 85, 250, getHeight() - 85);
+            needsRepaint = true;
+        }
+
         if (needsRepaint) repaint();
     }
 
@@ -294,10 +330,10 @@ public:
 
         // Draw Top Rack Shadow/Background
         g.setColour(juce::Colours::black.withAlpha(0.5f));
-        g.fillRect(0, 0, 1000, 85);
+        g.fillRect(0, 0, getWidth(), 85);
         g.setColour(juce::Colours::darkred);
-        g.drawLine(0, 40, 1000, 40, 2.0f);
-        g.drawLine(0, 85, 1000, 85, 3.0f);
+        g.drawLine(0, 40, getWidth(), 40, 2.0f);
+        g.drawLine(0, 85, getWidth(), 85, 3.0f);
 
         // Give the rack buttons a uniform, dark hardware look. Highlight blue if selected.
         for (auto* btn : rackButtons) {
@@ -330,7 +366,7 @@ public:
 
         g.setColour(juce::Colours::white);
         g.setFont(20.0f);
-        g.drawText("Master Vol", 850, 140, 100, 20, juce::Justification::centred);
+        g.drawText("Master Vol", getWidth() - 150, 140, 100, 20, juce::Justification::centred);
     }
 
     void paintOverChildren(juce::Graphics& g) override
@@ -356,7 +392,7 @@ public:
         }
 
         // master volume meter (simple vertical bar on the right)
-        juce::Rectangle<float> meterBounds(960.0f, 170.0f, 15.0f, 100.0f);
+        juce::Rectangle<float> meterBounds((float)getWidth() - 40.0f, 170.0f, 15.0f, 100.0f);
 
         // Background track
         g.setColour(juce::Colours::black.withAlpha(0.8f));
@@ -381,13 +417,9 @@ public:
 
     void resized() override
     {
-        auto area = getLocalBounds();
-        auto rackTop = area.removeFromTop(40);
-        auto rackBottom = area.removeFromTop(40);
-
-        // Dynamic button positioning
-        int topWidth = 1000 / 10;
-        int botWidth = 1000 / 10;
+        // 1. Dynamic Rack Buttons (Scale width evenly across the new window size)
+        int topWidth = getWidth() / 10;
+        int botWidth = getWidth() / 10;
 
         for (int slot = 0; slot < 20; ++slot)
         {
@@ -397,7 +429,6 @@ public:
             }
 
             if (btnToDraw) {
-                // Wrap the coordinates in a juce::Rectangle first, shrink it, then set the bounds!
                 if (slot < 10) {
                     btnToDraw->setBounds(juce::Rectangle<int>(slot * topWidth, 0, topWidth, 40).reduced(2));
                 }
@@ -407,25 +438,27 @@ public:
             }
         }
 
-        bypassToggle.setBounds(50, 100, 150, 30);
-        tunerToggle.setBounds(700, 100, 120, 30);
-        killAllButton.setBounds(850, 100, 150, 30);
-
+        // 2. Global Controls (Anchored to the left)
         bypassToggle.setBounds(20, 100, 100, 30);
         tunerToggle.setBounds(130, 100, 100, 30);
 
-        btnSave.setBounds(600, 100, 100, 30);
-        btnLoad.setBounds(710, 100, 100, 30);
-        killAllButton.setBounds(820, 100, 150, 30);
+        // Menu Controls (Anchored to the Right Edge!)
+        btnTogglePresets.setBounds(getWidth() - 500, 100, 100, 30);
+        btnSave.setBounds(getWidth() - 390, 100, 100, 30);
+        btnLoad.setBounds(getWidth() - 280, 100, 100, 30);
+        killAllButton.setBounds(getWidth() - 170, 100, 150, 30);
 
-        // Place the active PedalUIBlock
+        // Place the active PedalUIBlock dynamically
         for (auto* block : pedalBlocks) {
-            block->setBounds(50, 140, 600, 150);
+            // Width: stretches to 250px away from the right edge
+            // Height: stretches to 170px away from the bottom edge
+            block->setBounds(50, 140, getWidth() - 250, getHeight() - 170);
         }
 
-        masterVol.setBounds(850, 170, 100, 100);
-        btnClearBg.setBounds(960, 305, 30, 30);
-        btnBg.setBounds(960, 340, 30, 30);
+        // 3. Output Controls (Anchored to the Right and Bottom Edges)
+        masterVol.setBounds(getWidth() - 150, 170, 100, 100);
+        btnClearBg.setBounds(getWidth() - 40, getHeight() - 75, 30, 30);
+        btnBg.setBounds(getWidth() - 40, getHeight() - 40, 30, 30);
     }
 
     juce::TextButton btnSave{ "SAVE PRESET" }, btnLoad{ "LOAD PRESET" };
@@ -440,6 +473,8 @@ private:
     int currentSelectedPedalID = 0; // Tracks which pedal's knobs are visible
     float lastHz = 0.0f;
     float meterLevel = 0.0f; // Smooths out the meter animation
+    float targetDrawerX = -250.0f; // Hidden off-screen by default
+    float currentDrawerX = -250.0f;
     bool pedalStates[20] = {
         true, true, true, true, true,
         true, true, true, true, true,
@@ -453,6 +488,8 @@ private:
     juce::TextButton killAllButton;
     juce::ToggleButton bypassToggle, tunerToggle;
     juce::Slider masterVol;
+    juce::TextButton btnTogglePresets{ "PRESETS" };
+    std::unique_ptr<PresetDrawer> presetDrawer;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> volAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
 };

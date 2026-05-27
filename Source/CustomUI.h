@@ -123,7 +123,7 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        auto area = getLocalBounds().reduced(5); // Shrink slightly to leave room for the shadow
+        auto area = getLocalBounds().reduced(5);
 
         // 1. Enclosure Drop Shadow
         g.setColour(juce::Colours::black.withAlpha(0.6f));
@@ -140,36 +140,54 @@ public:
         g.drawRoundedRectangle(area.toFloat(), 10.0f, 1.5f);
 
         g.setColour(juce::Colours::white);
-        g.setFont(juce::Font(16.0f, juce::Font::bold)); // Bolder, cleaner font
+        g.setFont(juce::Font(16.0f, juce::Font::bold));
 
         // Edge Case: Cabinet Simulator
         if (sliderIDs.isEmpty() && comboID.isEmpty()) {
-            g.drawText("Cabinet IR Loaded. No parameters to edit.", 20, 20, 400, 20, juce::Justification::centredLeft);
+            g.drawText("Cabinet IR Loaded. No parameters to edit.", 20, 20, getWidth() - 40, 20, juce::Justification::centredLeft);
             return;
         }
 
-        // Draw Labels
-        int x = 0;
-        for (auto& id : sliderIDs) {
-            juce::String name = apvts.getParameter(id)->getName(100);
-            g.drawText(name, x, 10, 100, 20, juce::Justification::centred);
-            x += 130;
-        }
-        if (comboID.isNotEmpty()) {
-            juce::String name = apvts.getParameter(comboID)->getName(100);
-            g.drawText(name, x, 10, 100, 20, juce::Justification::centred);
+        // 4. Draw Labels (DYNAMICALLY SPACED)
+        int numItems = sliderIDs.size() + (comboID.isNotEmpty() ? 1 : 0);
+        if (numItems > 0) {
+            int itemWidth = getWidth() / numItems; // Divide available width by number of parameters
+            int x = 0;
+
+            for (auto& id : sliderIDs) {
+                juce::String name = apvts.getParameter(id)->getName(100);
+                g.drawText(name, x, 15, itemWidth, 20, juce::Justification::centred);
+                x += itemWidth;
+            }
+            if (comboID.isNotEmpty()) {
+                juce::String name = apvts.getParameter(comboID)->getName(100);
+                g.drawText(name, x, 15, itemWidth, 20, juce::Justification::centred);
+            }
         }
     }
 
     void resized() override
     {
+        int numItems = sliders.size() + (comboID.isNotEmpty() ? 1 : 0);
+        if (numItems == 0) return;
+
+        int itemWidth = getWidth() / numItems;
+
+        // Dynamically scale the knob size based on the window, but cap it at 120px
+        int knobSize = juce::jmin(itemWidth - 20, getHeight() - 60);
+        knobSize = juce::jmin(knobSize, 120);
+
+        // Center the knobs vertically inside the chassis
+        int yOffset = 35 + (getHeight() - 40 - knobSize) / 2;
+
         int x = 0;
         for (auto* slider : sliders) {
-            slider->setBounds(x, 30, 100, 100);
-            x += 130;
+            slider->setBounds(x + (itemWidth - knobSize) / 2, yOffset, knobSize, knobSize);
+            x += itemWidth;
         }
+
         if (comboID.isNotEmpty()) {
-            comboBox.setBounds(x, 60, 100, 30);
+            comboBox.setBounds(x + (itemWidth - 100) / 2, yOffset + (knobSize / 2) - 15, 100, 30);
         }
     }
 
@@ -358,4 +376,73 @@ private:
     juce::TextButton btnStop, btnRec, btnPlay, btnDub;
     juce::Slider levelKnob;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> levelAttach;
+};
+
+// PRESET DRAWER (SLIDE-OUT BROWSER)
+class PresetDrawer : public juce::Component, public juce::ListBoxModel
+{
+public:
+    PresetDrawer(juce::File directory, std::function<void(const juce::File&)> onLoadFile)
+        : presetDir(directory), loadCallback(onLoadFile)
+    {
+        addAndMakeVisible(presetList);
+        presetList.setModel(this);
+        presetList.setColour(juce::ListBox::backgroundColourId, juce::Colours::transparentBlack);
+        presetList.setRowHeight(35);
+
+        refreshPresets();
+    }
+
+    void refreshPresets()
+    {
+        // Scan the directory for all .xml files and populate the array
+        presetFiles = presetDir.findChildFiles(juce::File::findFiles, false, "*.xml");
+        presetList.updateContent();
+    }
+
+    // --- ListBoxModel Overrides ---
+    int getNumRows() override { return presetFiles.size(); }
+
+    void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override
+    {
+        if (rowIsSelected) g.fillAll(juce::Colours::dodgerblue.withAlpha(0.4f));
+
+        g.setColour(juce::Colours::white);
+        g.setFont(16.0f);
+
+        // Draw the filename without the .xml extension
+        juce::String presetName = presetFiles[rowNumber].getFileNameWithoutExtension();
+        g.drawText(presetName, 15, 0, width - 20, height, juce::Justification::centredLeft, true);
+    }
+
+    void listBoxItemDoubleClicked(int row, const juce::MouseEvent&) override
+    {
+        if (loadCallback) {
+            loadCallback(presetFiles[row]); // Silently load the preset!
+        }
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        // Draw a dark, semi-transparent glass panel background
+        g.fillAll(juce::Colours::black.withAlpha(0.85f));
+        g.setColour(juce::Colours::darkgrey);
+        g.drawRect(getLocalBounds(), 2.0f);
+
+        g.setColour(juce::Colours::cyan);
+        g.setFont(juce::Font(20.0f, juce::Font::bold));
+        g.drawText("PRESET LIBRARY", 0, 10, getWidth(), 30, juce::Justification::centred);
+        g.drawLine(20, 45, getWidth() - 20, 45, 1.0f);
+    }
+
+    void resized() override
+    {
+        presetList.setBounds(10, 55, getWidth() - 20, getHeight() - 65);
+    }
+
+private:
+    juce::ListBox presetList;
+    juce::File presetDir;
+    juce::Array<juce::File> presetFiles;
+    std::function<void(const juce::File&)> loadCallback;
 };

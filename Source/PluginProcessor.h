@@ -29,6 +29,7 @@ public:
 
     // THE CENTRAL DATABASE
     juce::AudioProcessorValueTreeState apvts;
+    juce::File presetDirectory;
 
     // THE PEDALBOARD
     std::vector<std::unique_ptr<AudioEffect>> pedalboard;
@@ -41,6 +42,14 @@ public:
         // Initialize the APVTS with our parameter layout
         apvts(*this, nullptr, "Parameters", createParameterLayout())
     {
+        // Create a dedicated folder in the user's AppData/Application Support directory
+        presetDirectory = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+            .getChildFile("MyAmpSim").getChildFile("Presets");
+
+        if (!presetDirectory.exists()) {
+            presetDirectory.createDirectory();
+        }
+
         // 0-7: Dynamics, Pitch, and Drive (Top Row)
         pedalboard.push_back(std::make_unique<NoiseGatePedal>(apvts.getRawParameterValue("ng_thresh"), apvts.getRawParameterValue("ng_ratio"), apvts.getRawParameterValue("ng_att"), apvts.getRawParameterValue("ng_rel")));
         pedalboard.push_back(std::make_unique<CompressorPedal>(apvts.getRawParameterValue("cmp_thresh"), apvts.getRawParameterValue("cmp_ratio"), apvts.getRawParameterValue("cmp_att"), apvts.getRawParameterValue("cmp_rel")));
@@ -220,6 +229,46 @@ public:
             }
 
             // 4. Scrub the XML and feed it to the APVTS safely
+            xmlState->deleteAllChildElementsWithTagName("ROUTING");
+            if (xmlState->hasTagName(apvts.state.getType())) {
+                apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
+            }
+        }
+    }
+
+    void loadPresetSilently(const juce::File& presetFile)
+    {
+        if (!presetFile.existsAsFile()) return;
+
+        std::unique_ptr<juce::XmlElement> xmlState = juce::XmlDocument::parse(presetFile);
+        if (xmlState != nullptr)
+        {
+            juce::XmlElement* bestRouting = nullptr;
+            for (auto* child : xmlState->getChildIterator()) {
+                if (child->hasTagName("ROUTING")) bestRouting = child;
+            }
+
+            if (bestRouting != nullptr) {
+                bool isPedalUsed[20] = { false };
+                for (int slot = 0; slot < 20; ++slot) {
+                    int pedalID = bestRouting->getIntAttribute("slot" + juce::String(slot), slot);
+                    if (pedalID >= 0 && pedalID < 20 && !isPedalUsed[pedalID]) {
+                        routingMap[slot].store(pedalID);
+                        isPedalUsed[pedalID] = true;
+                    }
+                    else {
+                        routingMap[slot].store(-1);
+                    }
+                }
+                for (int slot = 0; slot < 20; ++slot) {
+                    if (routingMap[slot].load() == -1) {
+                        for (int p = 0; p < 20; ++p) {
+                            if (!isPedalUsed[p]) { routingMap[slot].store(p); isPedalUsed[p] = true; break; }
+                        }
+                    }
+                }
+            }
+
             xmlState->deleteAllChildElementsWithTagName("ROUTING");
             if (xmlState->hasTagName(apvts.state.getType())) {
                 apvts.replaceState(juce::ValueTree::fromXml(*xmlState));
