@@ -747,12 +747,13 @@ private:
     double currentSampleRate = 48000.0;
 };
 
-// --- PEDAL 17: GUITAR SYNTH ---
+// --- PEDAL 17: GUITAR SYNTH (Upgraded for MIDI) ---
 class GuitarSynthPedal : public AudioEffect
 {
 public:
-    GuitarSynthPedal(std::atomic<float>* typeParam, std::atomic<float>* mixParam, std::atomic<float>* trackedPitch)
-        : waveType(typeParam), mix(mixParam), pitchHz(trackedPitch) {
+    // UPGRADE: Added midiPitch parameter to constructor
+    GuitarSynthPedal(std::atomic<float>* typeParam, std::atomic<float>* mixParam, std::atomic<float>* trackedPitch, std::atomic<float>* midiPitch)
+        : waveType(typeParam), mix(mixParam), pitchHz(trackedPitch), currentMidiHz(midiPitch) {
     }
 
     void prepare(double sampleRate, int samplesPerBlock) override { currentSampleRate = sampleRate; }
@@ -761,7 +762,10 @@ public:
     {
         if (isBypassed && isBypassed->load() > 0.5f) return;
 
-        float hz = pitchHz->load();
+        // If a MIDI key is pressed override the tuner's tracking
+        float midiHz = currentMidiHz->load();
+        float hz = (midiHz > 10.0f) ? midiHz : pitchHz->load();
+
         float currentMix = mix->load();
         int type = static_cast<int>(waveType->load());
 
@@ -771,17 +775,15 @@ public:
         for (int i = 0; i < buffer.getNumSamples(); ++i)
         {
             float inSample = leftData[i];
-
-            // 1. Calculate how loud the guitar string is right now
             float env = envFollower.process(inSample, 5.0f, 50.0f, currentSampleRate);
 
-            // 2. Generate the raw synth tone and multiply by volume envelope
+			// Only generate synth tone if we have a valid frequency and the envelope is open enough
             float synthTone = 0.0f;
             if (hz > 40.0f && env > 0.01f) {
                 synthTone = osc.process(currentSampleRate, hz, type) * env * 2.0f;
             }
 
-            // 3. Mix
+			// Mix the synth tone with the original guitar signal based on the Mix knob
             leftData[i] = (inSample * (1.0f - currentMix)) + (synthTone * currentMix);
             if (rightData) rightData[i] = leftData[i];
         }
@@ -791,7 +793,7 @@ public:
 private:
     SimpleOscillator osc;
     EnvelopeFollower envFollower;
-    std::atomic<float>* waveType, * mix, * pitchHz;
+    std::atomic<float>* waveType, * mix, * pitchHz, * currentMidiHz;
     double currentSampleRate = 48000.0;
 };
 
@@ -905,4 +907,112 @@ private:
     juce::AudioBuffer<float> looperBuffer;
     int writePos = 0, readPos = 0, loopLength = 0, lastState = 0;
     std::atomic<float>* state, * level;
+};
+
+// --- PEDAL 19: BITCRUSHER (Retro Hardware Sim) ---
+class BitcrusherPedal : public AudioEffect
+{
+public:
+    BitcrusherPedal(std::atomic<float>* bitsParam, std::atomic<float>* rateParam)
+        : bitDepth(bitsParam), downsampleFactor(rateParam) {
+    }
+
+    void prepare(double sampleRate, int samplesPerBlock) override {}
+
+    void process(juce::AudioBuffer<float>& buffer) override
+    {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
+        float bits = bitDepth->load();
+        int downsample = static_cast<int>(downsampleFactor->load());
+
+        // Calculate the number of discrete steps available at this bit-depth
+        float steps = std::pow(2.0f, bits);
+
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        {
+            auto* data = buffer.getWritePointer(channel);
+
+            // Keep local tracking per channel for the sample-hold effect
+            int localCounter = sampleCounter[channel];
+            float localHeld = heldSample[channel];
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                if (localCounter >= downsample) {
+                    // 1. Quantize the amplitude (Bit Reduction)
+                    float sample = data[i];
+                    localHeld = std::round(sample * steps) / steps;
+                    localCounter = 0;
+                }
+                else {
+                    localCounter++;
+                }
+
+                // 2. Output the held sample (Sample Rate Reduction / Aliasing)
+                data[i] = localHeld;
+            }
+
+            if (channel == buffer.getNumChannels() - 1) {
+                sampleCounter[channel] = localCounter;
+                heldSample[channel] = localHeld;
+            }
+        }
+    }
+    juce::String getName() const override { return "Bitcrush"; }
+
+private:
+    std::atomic<float>* bitDepth, * downsampleFactor;
+    int sampleCounter[2] = { 0, 0 };
+    float heldSample[2] = { 0.0f, 0.0f };
+};
+
+// --- PEDAL 20: RING MODULATOR ---
+class RingModPedal : public AudioEffect
+{
+public:
+    RingModPedal(std::atomic<float>* freqParam, std::atomic<float>* mixParam)
+        : freq(freqParam), mix(mixParam) {
+    }
+
+    void prepare(double sampleRate, int samplesPerBlock) override {
+        currentSampleRate = sampleRate;
+        phase = 0.0f;
+    }
+
+    void process(juce::AudioBuffer<float>& buffer) override
+    {
+        if (isBypassed && isBypassed->load() > 0.5f) return;
+
+        float currentFreq = freq->load();
+        float currentMix = mix->load();
+        float phaseIncrement = juce::MathConstants<float>::twoPi * currentFreq / currentSampleRate;
+
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        {
+            auto* data = buffer.getWritePointer(channel);
+            float localPhase = phase;
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            {
+                float inSample = data[i];
+                float mod = std::sin(localPhase);
+                float ringSample = inSample * mod;
+
+                data[i] = (inSample * (1.0f - currentMix)) + (ringSample * currentMix);
+
+                localPhase += phaseIncrement;
+                if (localPhase >= juce::MathConstants<float>::twoPi)
+                    localPhase -= juce::MathConstants<float>::twoPi;
+            }
+
+            if (channel == buffer.getNumChannels() - 1) phase = localPhase;
+        }
+    }
+    juce::String getName() const override { return "RingMod"; }
+
+private:
+    std::atomic<float>* freq, * mix;
+    float phase = 0.0f;
+    double currentSampleRate = 48000.0;
 };
