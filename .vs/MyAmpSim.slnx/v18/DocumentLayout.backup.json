@@ -3,22 +3,28 @@
   "WorkspaceRootPath": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\include\\vector||{3B902123-F8A7-4915-9F01-361F908088D0}|"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginEditor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\PluginEditor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\CustomUI.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\CustomUI.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\PluginProcessor.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\PluginProcessor.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\Effects.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Source\\AmpMath.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|CMake Overview Pages||{B1CAA5B0-FEB1-4350-8AB9-F895876842F2}"
     }
   ],
   "DocumentGroupContainers": [
@@ -28,7 +34,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -36,33 +42,59 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "vector",
-              "DocumentMoniker": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\include\\vector",
-              "RelativeDocumentMoniker": "..\\..\\..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\include\\vector",
-              "ToolTip": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\include\\vector*",
-              "RelativeToolTip": "..\\..\\..\\..\\..\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.51.36231\\include\\vector*",
-              "ViewState": "AgIAAEQQAAAAAAAAAAAAAJEHAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-05-26T19:50:28.848Z",
+              "DocumentIndex": 1,
+              "Title": "PluginEditor.h",
+              "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginEditor.h",
+              "RelativeDocumentMoniker": "Source\\PluginEditor.h",
+              "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginEditor.h",
+              "RelativeToolTip": "Source\\PluginEditor.h",
+              "ViewState": "AgIAAKQAAAAAAAAAAAAqwLkAAABLAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-27T21:00:27.861Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "PluginProcessor.h",
+              "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.h",
+              "RelativeDocumentMoniker": "Source\\PluginProcessor.h",
+              "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.h",
+              "RelativeToolTip": "Source\\PluginProcessor.h",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABsAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-27T20:58:39.071Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
+              "Title": "CustomUI.h",
+              "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\CustomUI.h",
+              "RelativeDocumentMoniker": "Source\\CustomUI.h",
+              "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\CustomUI.h",
+              "RelativeToolTip": "Source\\CustomUI.h",
+              "ViewState": "AgIAAKoAAAAAAAAAAAAiwLwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2026-05-27T20:52:26.813Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
               "Title": "Effects.h",
               "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
               "RelativeDocumentMoniker": "Source\\Effects.h",
               "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\Effects.h",
               "RelativeToolTip": "Source\\Effects.h",
-              "ViewState": "AgIAALQDAAAAAAAAAAAiwPkDAAACAAAAAAAAAA==",
+              "ViewState": "AgIAACoAAAAAAAAAAAAAADkAAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2026-05-22T19:23:13.308Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "AmpMath.h",
               "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\AmpMath.h",
               "RelativeDocumentMoniker": "Source\\AmpMath.h",
@@ -74,25 +106,16 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 4,
               "Title": "PluginProcessor.cpp",
               "DocumentMoniker": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.cpp",
               "RelativeDocumentMoniker": "Source\\PluginProcessor.cpp",
               "ToolTip": "C:\\Users\\augus\\Documents\\GitHub\\MyAmpSim\\Source\\PluginProcessor.cpp",
               "RelativeToolTip": "Source\\PluginProcessor.cpp",
-              "ViewState": "AgIAACEAAABwrrfNVMwswDgAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAABSAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-05-22T05:06:21.687Z",
               "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "CMake Overview Pages",
-              "DocumentMoniker": "CMake Overview Pages",
-              "ToolTip": "CMake Overview Pages",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
-              "WhenOpened": "2026-05-22T05:02:02.076Z"
             }
           ]
         }

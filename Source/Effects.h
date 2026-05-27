@@ -16,15 +16,23 @@ public:
     std::atomic<float>* isBypassed = nullptr;
 };
 
-// --- PEDAL 1: MULTI-DISTORTION ---
+// --- PEDAL 1: MULTI-DISTORTION (Upgraded with 4x Oversampling) ---
 class DistortionPedal : public AudioEffect
 {
 public:
     DistortionPedal(std::atomic<float>* driveParam, std::atomic<float>* typeParam)
-        : drive(driveParam), distType(typeParam) {
+        : drive(driveParam), distType(typeParam),
+        // 2 channels, factor 2 = 4x oversampling, high quality filter, use integer latency
+        oversampler(2, 2, juce::dsp::Oversampling<float>::filterHalfBandFIREquiripple, true)
+    {
     }
 
-    void prepare(double sampleRate, int samplesPerBlock) override {}
+    void prepare(double sampleRate, int samplesPerBlock) override
+    {
+        // The oversampler needs to know the block size to allocate memory safely
+        oversampler.initProcessing(static_cast<size_t>(samplesPerBlock));
+        oversampler.reset();
+    }
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
@@ -34,20 +42,31 @@ public:
         float currentDrive = drive->load();
         int currentType = static_cast<int>(distType->load()); // 0=Tube, 1=OD, 2=Fuzz
 
-        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        // 1. UPSAMPLE: Convert the buffer to an AudioBlock, then upsample to 4x (e.g., 192kHz)
+        juce::dsp::AudioBlock<float> block(buffer);
+        juce::dsp::AudioBlock<float> upsampledBlock = oversampler.processSamplesUp(block);
+
+        // 2. PROCESS AUDIO AT ULTRA-HIGH RESOLUTION
+        for (int channel = 0; channel < (int)upsampledBlock.getNumChannels(); ++channel)
         {
-            auto* data = buffer.getWritePointer(channel);
-            for (int i = 0; i < buffer.getNumSamples(); ++i)
+            auto* data = upsampledBlock.getChannelPointer(channel);
+            for (int i = 0; i < (int)upsampledBlock.getNumSamples(); ++i)
             {
+                // Uses the exact same AmpMath logic, just running at 4x the speed
                 data[i] = MultiDistortion::process(data[i], currentDrive, currentType);
             }
         }
+
+        // 3. DOWNSAMPLE: Filter out the high-frequency garbage and return to original sample rate
+        oversampler.processSamplesDown(block);
     }
+
     juce::String getName() const override { return "Distortion"; }
 
 private:
     std::atomic<float>* drive;
-    std::atomic<float>* distType; // NEW
+    std::atomic<float>* distType;
+    juce::dsp::Oversampling<float> oversampler;
 };
 
 // --- PEDAL 2: CABINET SIMULATOR ---
@@ -55,32 +74,36 @@ private:
 class CabinetPedal : public AudioEffect
 {
 public:
+    CabinetPedal() = default;
+
     void prepare(double sampleRate, int samplesPerBlock) override
     {
-        juce::dsp::ProcessSpec spec;
-        spec.sampleRate = sampleRate;
-        spec.maximumBlockSize = samplesPerBlock;
-        spec.numChannels = 2;
-        cabSim.prepare(spec);
-
-        const void* cabData = BinaryData::cabinet_wav;
-        int cabSize = BinaryData::cabinet_wavSize;
-        if (cabData != nullptr && cabSize > 0)
-            cabSim.loadImpulseResponse(cabData, cabSize, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::yes, 0);
+        juce::dsp::ProcessSpec spec{ sampleRate, static_cast<juce::uint32>(samplesPerBlock), 2 };
+        convolution.prepare(spec);
     }
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
         if (isBypassed && isBypassed->load() > 0.5f) return;
 
+        // Convolution requires wrapping the buffer in an AudioBlock
         juce::dsp::AudioBlock<float> block(buffer);
         juce::dsp::ProcessContextReplacing<float> context(block);
-        cabSim.process(context);
+
+        convolution.process(context);
     }
-    juce::String getName() const override { return "Cabinet"; }
+
+    // Custom function to load the .wav file from the UI
+    void loadImpulseResponse(const juce::File& file)
+    {
+        // Trims silence and normalizes the IR automatically
+        convolution.loadImpulseResponse(file, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::yes, 0);
+    }
+
+    juce::String getName() const override { return "Cab"; }
 
 private:
-    juce::dsp::Convolution cabSim;
+    juce::dsp::Convolution convolution;
 };
 
 // --- PEDAL 3: TREMOLO ---

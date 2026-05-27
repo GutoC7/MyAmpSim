@@ -7,12 +7,12 @@
   },
   "ExpandedNodes": [
     "",
-    "\\JUCE",
     "\\JUCE\\extras",
     "\\JUCE\\extras\\BinaryBuilder",
     "\\JUCE\\extras\\BinaryBuilder\\Builds",
-    "\\JUCE\\extras\\BinaryBuilder\\Builds\\VisualStudio2022"
+    "\\JUCE\\extras\\BinaryBuilder\\Builds\\VisualStudio2022",
+    "\\Source"
   ],
-  "SelectedNode": "\\JUCE",
+  "SelectedNode": "\\Source\\PluginEditor.h",
   "PreviewInSolutionExplorer": false
 }
