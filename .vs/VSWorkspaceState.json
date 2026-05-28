@@ -7,8 +7,13 @@
   },
   "ExpandedNodes": [
     "",
+    "\\JUCE",
+    "\\JUCE\\extras",
+    "\\JUCE\\extras\\AudioPerformanceTest",
+    "\\JUCE\\extras\\AudioPerformanceTest\\Builds",
+    "\\JUCE\\extras\\AudioPerformanceTest\\Builds\\VisualStudio2026",
     "\\Source"
   ],
-  "SelectedNode": "\\JUCE",
+  "SelectedNode": "\\CMakeLists.txt",
   "PreviewInSolutionExplorer": false
 }

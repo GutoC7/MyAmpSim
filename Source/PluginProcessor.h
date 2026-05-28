@@ -3,6 +3,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include "AmpMath.h"
 #include "Effects.h"
+#include "PresetFactory.h"
 
 // --- THE PROCESSOR (Audio Engine) ---
 class MyAmpSimAudioProcessor : public juce::AudioProcessor
@@ -49,6 +50,8 @@ public:
         if (!presetDirectory.exists()) {
             presetDirectory.createDirectory();
         }
+
+		PresetFactory::installDefaultPresets(presetDirectory); // run the first-time setup to populate the folder with some presets
 
         // 0-7: Dynamics, Pitch, and Drive (Top Row)
         pedalboard.push_back(std::make_unique<NoiseGatePedal>(apvts.getRawParameterValue("ng_thresh"), apvts.getRawParameterValue("ng_ratio"), apvts.getRawParameterValue("ng_att"), apvts.getRawParameterValue("ng_rel")));
