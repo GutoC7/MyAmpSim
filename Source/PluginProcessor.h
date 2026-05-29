@@ -14,6 +14,50 @@ public:
     std::atomic<float> midiPitchHz{ 0.0f };   // Tracks the MIDI keyboard
     std::atomic<float> outputPeak{ 0.0f }; // Tracks the master output volume
 
+    // --- MIDI LEARN SYSTEM ---
+    std::atomic<int> lastMovedCC{ -1 }; // Remembers the physical knob you just touched
+    std::atomic<bool> isMidiLearnActive{ false }; // Flag controlled by the UI
+    juce::RangedAudioParameter* ccBindings[128]{ nullptr }; // Fast lookup array
+
+    // Safely binds a physical CC number to an APVTS parameter ID
+    void bindCC(int ccNumber, const juce::String& paramID)
+    {
+        if (ccNumber >= 0 && ccNumber < 128) {
+            ccBindings[ccNumber] = apvts.getParameter(paramID);
+        }
+    }
+
+    // --- FFT VISUALIZER TUNNEL ---
+    enum { fftOrder = 10, fftSize = 1 << fftOrder };
+
+    juce::dsp::FFT forwardFFT{ fftOrder };
+    juce::dsp::WindowingFunction<float> window{ fftSize, juce::dsp::WindowingFunction<float>::hann };
+
+    float fifo[fftSize];
+    std::atomic<int> fifoIndex{ 0 };
+    bool nextFFTBlockReady = false;
+
+    float fftData[fftSize * 2]; // 2x size because FFT calculates complex numbers
+    float waveData[fftSize]; // copy for the oscilloscope
+
+    // The Audio Thread calls this thousands of times a second
+    void pushNextSampleIntoFifo(float sample)
+    {
+        // When the tunnel is full...
+        if (fifoIndex == fftSize) {
+            // ...and the UI has finished drawing the last frame...
+            if (!nextFFTBlockReady) {
+                // ...push the new block of audio into the public array for the UI to read
+                std::fill(fftData, fftData + (fftSize * 2), 0.0f);
+                std::copy(fifo, fifo + fftSize, fftData);
+                std::copy(fifo, fifo + fftSize, waveData);
+                nextFFTBlockReady = true;
+            }
+            fifoIndex = 0;
+        }
+        fifo[fifoIndex++] = sample;
+    }
+
     // Safely searches the pedalboard for the Cabinet and loads the IR
     void loadCabinetIR(const juce::File& file)
     {
@@ -118,13 +162,24 @@ public:
         {
             auto msg = metadata.getMessage();
             if (msg.isNoteOn()) {
-                // Get the Note Number first then convert it to Hertz
                 midiPitchHz.store((float)juce::MidiMessage::getMidiNoteInHertz(msg.getNoteNumber()));
             }
             else if (msg.isNoteOff()) {
-                // Same here, convert the Note Number to Hertz to compare it
                 if (std::abs((float)juce::MidiMessage::getMidiNoteInHertz(msg.getNoteNumber()) - midiPitchHz.load()) < 1.0f) {
                     midiPitchHz.store(0.0f);
+                }
+            }
+            // ---> ADD THIS NEW BLOCK: Catch hardware knobs & expression pedals <---
+            else if (msg.isController()) {
+                int cc = msg.getControllerNumber();
+                float val = msg.getControllerValue() / 127.0f; // Normalize 0-127 into 0.0-1.0
+
+                // 1. Remember this CC in case the user is trying to "Learn" a new mapping
+                lastMovedCC.store(cc);
+
+                // 2. If it's already mapped, physically turn the parameter under the hood!
+                if (ccBindings[cc] != nullptr) {
+                    ccBindings[cc]->setValueNotifyingHost(val);
                 }
             }
         }
@@ -151,10 +206,18 @@ public:
         {
             int pedalIndex = routingMap[i].load();
 
-            // Never access the vector unless 100% sure the pedal exists!
+            // Never access the vector unless 100% sure the pedal exists
             if (pedalIndex >= 0 && pedalIndex < pedalboard.size())
             {
                 pedalboard[pedalIndex]->process(buffer);
+
+                // Capture the audio immediately after the EQ pedal processes it
+                if (pedalboard[pedalIndex]->getName() == "EQ") {
+                    auto* readPtr = buffer.getReadPointer(0); // We only need the Left channel for visuals
+                    for (int s = 0; s < buffer.getNumSamples(); ++s) {
+                        pushNextSampleIntoFifo(readPtr[s]);
+                    }
+                }
             }
         }
 

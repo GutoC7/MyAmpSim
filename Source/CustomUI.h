@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include "PluginProcessor.h"
 
 // DRAGGABLE RACK BUTTON
 class DraggableRackButton : public juce::TextButton, public juce::DragAndDropTarget
@@ -90,34 +91,42 @@ public:
     }
 };
 
-
 // DYNAMIC UI FACTORY COMPONENT
 class PedalUIBlock : public juce::Component
 {
 public:
-    PedalUIBlock(juce::AudioProcessorValueTreeState& state,
+    PedalUIBlock(MyAmpSimAudioProcessor& p,
         const juce::StringArray& sIDs,
         const juce::String& cID = "",
         const juce::StringArray& comboItems = {})
-        : apvts(state), sliderIDs(sIDs), comboID(cID)
+        : processor(p), sliderIDs(sIDs), comboID(cID)
     {
         // 1. Generate Sliders dynamically
         for (auto& id : sliderIDs) {
             auto* slider = new juce::Slider();
             slider->setSliderStyle(juce::Slider::Rotary);
             slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
-            addAndMakeVisible(slider);
-            sliders.add(slider); // OwnedArray takes ownership of the pointer
 
-            auto* attachment = new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, id, *slider);
-            sliderAttachments.add(attachment);
+            // --- THE MIDI LEARN TRIGGER ---
+            slider->onDragStart = [this, id] {
+                if (processor.isMidiLearnActive.load()) {
+                    int lastCC = processor.lastMovedCC.load();
+                    if (lastCC >= 0) processor.bindCC(lastCC, id); // Bind it!
+                }
+                };
+
+            addAndMakeVisible(slider);
+            sliders.add(slider);
+
+            // Attach securely to the audio processor database
+            sliderAttachments.add(new juce::AudioProcessorValueTreeState::SliderAttachment(processor.apvts, id, *slider));
         }
 
         // 2. Generate ComboBox dynamically (if a comboID was provided)
         if (comboID.isNotEmpty()) {
             comboBox.addItemList(comboItems, 1);
             addAndMakeVisible(comboBox);
-            comboAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(apvts, comboID, comboBox);
+            comboAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(processor.apvts, comboID, comboBox);
         }
     }
 
@@ -151,16 +160,16 @@ public:
         // 4. Draw Labels (DYNAMICALLY SPACED)
         int numItems = sliderIDs.size() + (comboID.isNotEmpty() ? 1 : 0);
         if (numItems > 0) {
-            int itemWidth = getWidth() / numItems; // Divide available width by number of parameters
+            int itemWidth = getWidth() / numItems;
             int x = 0;
 
             for (auto& id : sliderIDs) {
-                juce::String name = apvts.getParameter(id)->getName(100);
+                juce::String name = processor.apvts.getParameter(id)->getName(100);
                 g.drawText(name, x, 15, itemWidth, 20, juce::Justification::centred);
                 x += itemWidth;
             }
             if (comboID.isNotEmpty()) {
-                juce::String name = apvts.getParameter(comboID)->getName(100);
+                juce::String name = processor.apvts.getParameter(comboID)->getName(100);
                 g.drawText(name, x, 15, itemWidth, 20, juce::Justification::centred);
             }
         }
@@ -192,7 +201,7 @@ public:
     }
 
 private:
-    juce::AudioProcessorValueTreeState& apvts;
+    MyAmpSimAudioProcessor& processor;
     juce::StringArray sliderIDs;
     juce::String comboID;
 
@@ -445,4 +454,158 @@ private:
     juce::File presetDir;
     juce::Array<juce::File> presetFiles;
     std::function<void(const juce::File&)> loadCallback;
+};
+
+// CUSTOM EQ UI BLOCK (FFT + OSCILLOSCOPE)
+class EqUIBlock : public juce::Component, public juce::Timer
+{
+public:
+    EqUIBlock(MyAmpSimAudioProcessor& p) : processor(p)
+    {
+        juce::StringArray ids = { "eq_low", "eq_mid", "eq_high" };
+        for (auto& id : ids) {
+            auto* slider = new juce::Slider();
+            slider->setSliderStyle(juce::Slider::Rotary);
+            slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+            addAndMakeVisible(slider);
+            sliders.add(slider);
+            sliderAttachments.add(new juce::AudioProcessorValueTreeState::SliderAttachment(processor.apvts, id, *slider));
+        }
+        startTimerHz(30); // 30 FPS Graphics
+    }
+
+    void timerCallback() override
+    {
+        if (processor.nextFFTBlockReady) {
+            drawNextFrameOfSpectrum();
+            processor.nextFFTBlockReady = false;
+            repaint();
+        }
+    }
+
+    void drawNextFrameOfSpectrum()
+    {
+        auto bounds = getLocalBounds().reduced(5);
+        juce::Rectangle<float> screenBounds(20.0f, 20.0f, (float)bounds.getWidth() - 40.0f, (float)bounds.getHeight() - 110.0f);
+
+        // Split the screen 
+        juce::Rectangle<float> fftBounds = screenBounds.removeFromTop(screenBounds.getHeight() * 0.5f);
+        juce::Rectangle<float> waveBounds = screenBounds;
+
+        // --- 1. BUILD THE TIME-DOMAIN OSCILLOSCOPE WAVE ---
+        juce::Path newWavePath;
+        bool firstWave = true;
+        for (int i = 0; i < processor.fftSize; ++i) {
+            float x = waveBounds.getX() + ((float)i / (float)processor.fftSize) * waveBounds.getWidth();
+            // Raw audio ranges from -1.0 to 1.0. Map it to the screen height.
+            float y = juce::jmap(processor.waveData[i], -1.2f, 1.2f, waveBounds.getBottom(), waveBounds.getY());
+            y = juce::jlimit(waveBounds.getY(), waveBounds.getBottom(), y); // Prevent clipping outside the glass
+
+            if (firstWave) {
+                newWavePath.startNewSubPath(x, y);
+                firstWave = false;
+            }
+            else {
+                newWavePath.lineTo(x, y);
+            }
+        }
+        wavePath = newWavePath;
+
+        // --- 2. BUILD THE FREQUENCY-DOMAIN FFT GRAPH ---
+        processor.window.multiplyWithWindowingTable(processor.fftData, processor.fftSize);
+        processor.forwardFFT.performFrequencyOnlyForwardTransform(processor.fftData);
+
+        juce::Path newFftPath;
+        int numBins = processor.fftSize / 2;
+        bool firstFft = true;
+        float minFreq = 48000.0f / (float)processor.fftSize;
+        float maxFreq = 20000.0f;
+
+        for (int i = 1; i < numBins; ++i)
+        {
+            float freq = (i * 48000.0f) / (float)processor.fftSize;
+            if (freq > maxFreq) break;
+            if (freq < minFreq) continue;
+
+            float logX = (std::log10(freq) - std::log10(minFreq)) / (std::log10(maxFreq) - std::log10(minFreq));
+            float xPos = fftBounds.getX() + (logX * fftBounds.getWidth());
+
+            float level = juce::Decibels::gainToDecibels(processor.fftData[i]) - juce::Decibels::gainToDecibels((float)processor.fftSize);
+            float yPos = juce::jmap(level, -80.0f, 0.0f, fftBounds.getBottom(), fftBounds.getY());
+            yPos = juce::jlimit(fftBounds.getY(), fftBounds.getBottom(), yPos);
+
+            if (firstFft) {
+                newFftPath.startNewSubPath(xPos, yPos);
+                firstFft = false;
+            }
+            else {
+                newFftPath.lineTo(xPos, yPos);
+            }
+        }
+        fftPath = newFftPath;
+    }
+
+    void paint(juce::Graphics& g) override
+    {
+        auto area = getLocalBounds().reduced(5);
+
+        // Hardware Chassis 
+        g.setColour(juce::Colours::black.withAlpha(0.6f));
+        g.fillRoundedRectangle(area.translated(4, 5).toFloat(), 10.0f);
+        juce::ColourGradient pedalGrad(juce::Colour(60, 65, 70), 0, 0, juce::Colour(20, 22, 25), 0, (float)area.getHeight(), false);
+        g.setGradientFill(pedalGrad);
+        g.fillRoundedRectangle(area.toFloat(), 10.0f);
+        g.setColour(juce::Colours::grey.withAlpha(0.3f));
+        g.drawRoundedRectangle(area.toFloat(), 10.0f, 1.5f);
+
+        // Draw the Glass Screen
+        juce::Rectangle<float> screenBounds(20.0f, 20.0f, (float)area.getWidth() - 40.0f, (float)area.getHeight() - 110.0f);
+        g.setColour(juce::Colours::black);
+        g.fillRoundedRectangle(screenBounds, 5.0f);
+        g.setColour(juce::Colours::cyan.withAlpha(0.3f));
+        g.drawRoundedRectangle(screenBounds, 5.0f, 2.0f);
+
+        // Draw UI Grid Lines inside the screen
+        float splitY = screenBounds.getY() + screenBounds.getHeight() * 0.5f;
+        g.setColour(juce::Colours::cyan.withAlpha(0.4f));
+        g.drawLine(screenBounds.getX(), splitY, screenBounds.getRight(), splitY, 1.0f); // Divider
+
+        g.setColour(juce::Colours::limegreen.withAlpha(0.8f));
+        float centerWaveY = splitY + (screenBounds.getBottom() - splitY) * 0.5f;
+        g.drawLine(screenBounds.getX(), centerWaveY, screenBounds.getRight(), centerWaveY, 1.0f); // Zero-crossing
+
+        // --- DRAW THE LIVE GRAPHS ---
+        g.setColour(juce::Colours::cyan);
+        g.strokePath(fftPath, juce::PathStrokeType(2.0f));
+
+        g.setColour(juce::Colours::limegreen); // Contrast color for the time-domain wave
+        g.strokePath(wavePath, juce::PathStrokeType(1.5f));
+
+        // Draw Parameter Labels
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::Font(16.0f, juce::Font::bold));
+        int itemWidth = getWidth() / 3;
+        juce::StringArray labels = { "Low", "Mid", "High" };
+        for (int i = 0; i < 3; ++i) {
+            g.drawText(labels[i], i * itemWidth, getHeight() - 85, itemWidth, 20, juce::Justification::centred);
+        }
+    }
+
+    void resized() override
+    {
+        int itemWidth = getWidth() / 3;
+        int knobSize = juce::jmin(itemWidth - 20, 60);
+        int yOffset = getHeight() - 65;
+
+        for (int i = 0; i < 3; ++i) {
+            sliders[i]->setBounds(i * itemWidth + (itemWidth - knobSize) / 2, yOffset, knobSize, knobSize);
+        }
+    }
+
+private:
+    MyAmpSimAudioProcessor& processor;
+    juce::OwnedArray<juce::Slider> sliders;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAttachments;
+    juce::Path fftPath;
+    juce::Path wavePath; 
 };

@@ -9,11 +9,10 @@
     "",
     "\\JUCE",
     "\\JUCE\\extras",
-    "\\JUCE\\extras\\AudioPerformanceTest",
     "\\JUCE\\extras\\AudioPerformanceTest\\Builds",
-    "\\JUCE\\extras\\AudioPerformanceTest\\Builds\\VisualStudio2026",
+    "\\JUCE\\extras\\Projucer",
     "\\Source"
   ],
-  "SelectedNode": "\\CMakeLists.txt",
+  "SelectedNode": "\\JUCE\\extras\\Projucer\\Projucer.jucer",
   "PreviewInSolutionExplorer": false
 }

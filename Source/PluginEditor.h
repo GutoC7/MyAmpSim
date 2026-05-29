@@ -78,6 +78,12 @@ public:
         tunerToggle.onClick = [this] { repaint(); };
         addAndMakeVisible(tunerToggle);
 
+        btnMidiLearn.setButtonText("MIDI LEARN");
+        btnMidiLearn.onClick = [this] {
+            audioProcessor.isMidiLearnActive.store(btnMidiLearn.getToggleState());
+            };
+        addAndMakeVisible(btnMidiLearn);
+
         killAllButton.setButtonText("RESET ALL SETTINGS");
         killAllButton.setColour(juce::TextButton::buttonColourId, juce::Colours::darkred);
         killAllButton.onClick = [this] {
@@ -205,28 +211,28 @@ public:
         volAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(p.apvts, "master_vol", masterVol);
 
         // 3. GENERATE PEDAL BLOCKS USING THE FACTORY
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "ng_thresh", "ng_ratio", "ng_att", "ng_rel" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "cmp_thresh", "cmp_ratio", "cmp_att", "cmp_rel" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "bst_gain" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "drive" }, "dist_type", { "Tube", "Overdrive", "Fuzz" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "eq_low", "eq_mid", "eq_high" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "ps_semi", "ps_mix" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "oct_semi", "oct_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "ng_thresh", "ng_ratio", "ng_att", "ng_rel" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "cmp_thresh", "cmp_ratio", "cmp_att", "cmp_rel" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "bst_gain" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "drive" }, "dist_type", { "Tube", "Overdrive", "Fuzz" }));
+        pedalBlocks.add(new EqUIBlock(p)); // Passes the DSP Audio Engine reference for FFT processing
+        pedalBlocks.add(new PedalUIBlock(p, { "ps_semi", "ps_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "oct_semi", "oct_mix" }));
         pedalBlocks.add(new CabinetUIBlock([this](const juce::File& file) {
             audioProcessor.loadCabinetIR(file);
             }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "wah_rate", "wah_depth", "wah_q" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "phs_rate", "phs_depth", "phs_freq", "phs_feed" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "flg_rate", "flg_depth", "flg_feed" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "trem_depth", "trem_rate" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "cho_rate", "cho_depth", "cho_mix" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "delay_time", "delay_feed", "delay_mix" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "rvb_room", "rvb_damp", "rvb_mix" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "ac_body", "ac_air", "ac_reso" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "syn_mix" }, "syn_type", { "Sine", "Square", "Saw" }));
-        pedalBlocks.add(new LooperUIBlock(p.apvts));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "bc_bits", "bc_down" }));
-        pedalBlocks.add(new PedalUIBlock(p.apvts, { "rm_freq", "rm_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "wah_rate", "wah_depth", "wah_q" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "phs_rate", "phs_depth", "phs_freq", "phs_feed" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "flg_rate", "flg_depth", "flg_feed" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "trem_depth", "trem_rate" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "cho_rate", "cho_depth", "cho_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "delay_time", "delay_feed", "delay_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "rvb_room", "rvb_damp", "rvb_mix" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "ac_body", "ac_air", "ac_reso" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "syn_mix" }, "syn_type", { "Sine", "Square", "Saw" }));
+        pedalBlocks.add(new LooperUIBlock(p.apvts)); 
+        pedalBlocks.add(new PedalUIBlock(p, { "bc_bits", "bc_down" }));
+        pedalBlocks.add(new PedalUIBlock(p, { "rm_freq", "rm_mix" }));
 
         // Add them to the UI but keep them hidden initially
         for (auto* block : pedalBlocks) addChildComponent(block);
@@ -345,25 +351,6 @@ public:
             }
         }
 
-        // TUNER SCREEN
-        if (tunerToggle.getToggleState())
-        {
-            g.setColour(juce::Colours::black);
-            g.fillRect(700, 150, 130, 80);
-            g.setColour(juce::Colours::limegreen);
-
-            juce::String noteName = "--";
-            if (lastHz > 40.0f) {
-                int midiNote = std::round(69 + 12 * std::log2(lastHz / 440.0));
-                juce::StringArray notes = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
-                noteName = notes[midiNote % 12];
-                g.setFont(15.0f);
-                g.drawText(juce::String(lastHz, 1) + " Hz", 700, 190, 130, 30, juce::Justification::centred);
-            }
-            g.setFont(30.0f);
-            g.drawText(noteName, 700, 150, 130, 50, juce::Justification::centred);
-        }
-
         g.setColour(juce::Colours::white);
         g.setFont(20.0f);
         g.drawText("Master Vol", getWidth() - 150, 140, 100, 20, juce::Justification::centred);
@@ -371,6 +358,30 @@ public:
 
     void paintOverChildren(juce::Graphics& g) override
     {
+        // TUNER SCREEN 
+        if (tunerToggle.getToggleState())
+        {
+            // Positioned dynamically to float right beside the toggle button
+            juce::Rectangle<float> tunerBounds(250.0f, 90.0f, 130.0f, 80.0f);
+
+            g.setColour(juce::Colours::black.withAlpha(0.85f));
+            g.fillRoundedRectangle(tunerBounds, 5.0f);
+
+            g.setColour(juce::Colours::limegreen.withAlpha(0.5f));
+            g.drawRoundedRectangle(tunerBounds, 5.0f, 2.0f);
+
+            juce::String noteName = "--";
+            if (lastHz > 40.0f) {
+                int midiNote = std::round(69 + 12 * std::log2(lastHz / 440.0));
+                juce::StringArray notes = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+                noteName = notes[midiNote % 12];
+                g.setFont(15.0f);
+                g.drawText(juce::String(lastHz, 1) + " Hz", 250, 130, 130, 30, juce::Justification::centred);
+            }
+            g.setFont(30.0f);
+            g.drawText(noteName, 250, 90, 130, 50, juce::Justification::centred);
+        }
+        
         // glowing LEDs for active pedals in the rack
         for (auto* btn : rackButtons) {
             bool isBypassed = pedalStates[btn->fixedPedalID];
@@ -441,6 +452,14 @@ public:
         // 2. Global Controls (Anchored to the left)
         bypassToggle.setBounds(20, 100, 100, 30);
         tunerToggle.setBounds(130, 100, 100, 30);
+		btnMidiLearn.setBounds(240, 100, 100, 30);
+
+        btnMidiLearn.setButtonText("MIDI LEARN");
+        btnMidiLearn.setColour(juce::ToggleButton::textColourId, juce::Colours::white);
+        btnMidiLearn.onClick = [this] {
+            audioProcessor.isMidiLearnActive.store(btnMidiLearn.getToggleState());
+            };
+        addAndMakeVisible(btnMidiLearn);
 
         // Menu Controls (Anchored to the Right Edge!)
         btnTogglePresets.setBounds(getWidth() - 500, 100, 100, 30);
@@ -486,7 +505,7 @@ private:
     juce::OwnedArray<juce::Component> pedalBlocks;
 
     juce::TextButton killAllButton;
-    juce::ToggleButton bypassToggle, tunerToggle;
+    juce::ToggleButton bypassToggle, tunerToggle, btnMidiLearn;
     juce::Slider masterVol;
     juce::TextButton btnTogglePresets{ "PRESETS" };
     std::unique_ptr<PresetDrawer> presetDrawer;
