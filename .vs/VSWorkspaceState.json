@@ -2,17 +2,20 @@
   "OutputFoldersPerTargetSystem": {
     "Local Machine": [
       "out\\build\\x64-Debug",
-      "out\\install\\x64-Debug"
+      "out\\install\\x64-Debug",
+      "out\\build\\x64-Release",
+      "out\\install\\x64-Release"
     ]
   },
   "ExpandedNodes": [
     "",
-    "\\JUCE",
-    "\\JUCE\\extras",
+    "\\JUCE\\extras\\AudioPerformanceTest",
     "\\JUCE\\extras\\AudioPerformanceTest\\Builds",
+    "\\JUCE\\extras\\AudioPerformanceTest\\Builds\\VisualStudio2022",
     "\\JUCE\\extras\\Projucer",
+    "\\Resources",
     "\\Source"
   ],
-  "SelectedNode": "\\JUCE\\extras\\Projucer\\Projucer.jucer",
+  "SelectedNode": "\\CMakeLists.txt",
   "PreviewInSolutionExplorer": false
 }

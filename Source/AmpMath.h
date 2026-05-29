@@ -121,54 +121,65 @@ private:
     float coeff = 1.0f;
 };
 
-class GuitarTuner
+class PitchTracker
 {
 public:
+    PitchTracker() { std::fill(buffer, buffer + 2048, 0.0f); }
+
     void prepare(double sr) { sampleRate = sr; }
+
     void process(float sample)
     {
-        // 1. ENVELOPE FOLLOWER (Noise Gate)
-        // Track the volume. If it's too quiet, ignore it completely.
-        float absSample = std::abs(sample);
-        envelope = envelope * 0.99f + absSample * 0.01f;
+        // 1. Track the volume envelope to act as a noise gate
+        env = env * 0.99f + std::abs(sample) * 0.01f;
 
-        if (envelope < 0.005f) { // Noise threshold
-            return; // Exit early, don't update pitch
+        buffer[writeIdx++] = sample;
+
+        // 2. Once we collect enough samples, run the AMDF analysis
+        if (writeIdx >= 2048) {
+            if (env > 0.01f) computeAMDF();
+            else smoothedHz = 0.0f; // Gate closed
+
+            // Shift the second half of the buffer to the front to overlap the analysis
+            std::memmove(buffer, buffer + 1024, 1024 * sizeof(float));
+            writeIdx = 1024;
         }
-
-        // 2. HEAVY LOWPASS FILTER
-        // Smooth out the string harmonics to find the fundamental note
-        filtered = filtered * 0.9f + sample * 0.1f;
-
-        // 3. ZERO-CROSSING WITH HYSTERESIS
-        // The wave must cross +0.01 AND -0.01 to count as a full cycle. 
-        // This ignores the tiny harmonic wiggles near the zero line.
-        if (filtered > 0.01f)
-        {
-            isPositive = true;
-        }
-        else if (filtered < -0.01f && isPositive)
-        {
-            isPositive = false;
-            float period = currentSampleIndex - lastZeroCross;
-
-            if (period > 0)
-            {
-                float hz = sampleRate / period;
-                if (hz > 60.0f && hz < 1000.0f) // Restrict to standard guitar range
-                    smoothedHz = smoothedHz * 0.9f + hz * 0.1f;
-            }
-            lastZeroCross = currentSampleIndex;
-        }
-        currentSampleIndex++;
     }
 
-    // If the envelope is below our noise gate, output 0 Hz
-    float getHz() const { return envelope < 0.005f ? 0.0f : smoothedHz; }
+    float getHz() const { return smoothedHz; }
 
 private:
     double sampleRate = 48000.0;
-    float filtered = 0.0f, smoothedHz = 0.0f, envelope = 0.0f;
-    long long currentSampleIndex = 0, lastZeroCross = 0;
-    bool isPositive = false;
+    float buffer[2048];
+    int writeIdx = 0;
+    float smoothedHz = 0.0f, env = 0.0f;
+
+    void computeAMDF()
+    {
+        // Search range: ~60 Hz (Low B string) to ~1000 Hz (High frets)
+        int minLag = static_cast<int>(sampleRate / 1000.0f);
+        int maxLag = static_cast<int>(sampleRate / 60.0f);
+
+        float minVal = 1e9f;
+        int bestLag = -1;
+
+        // The AMDF Algorithm: Slide the waveform over itself and measure the difference
+        for (int lag = minLag; lag <= maxLag; ++lag) {
+            float sum = 0.0f;
+            for (int i = 0; i < 1024; ++i) {
+                sum += std::abs(buffer[i] - buffer[i + lag]);
+            }
+            // The lag with the lowest difference is the true fundamental period
+            if (sum < minVal) {
+                minVal = sum;
+                bestLag = lag;
+            }
+        }
+
+        if (bestLag > 0) {
+            float hz = sampleRate / static_cast<float>(bestLag);
+            // Smooth the output so the synth doesn't warble
+            smoothedHz = smoothedHz * 0.8f + hz * 0.2f;
+        }
+    }
 };

@@ -1,0 +1,11 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/cmake_install.cmake",
+		"C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/cmake_install.cmake",
+		"C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/modules/cmake_install.cmake",
+		"C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/extras/Build/cmake_install.cmake",
+		"C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/extras/Build/juceaide/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

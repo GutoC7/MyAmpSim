@@ -1,0 +1,84 @@
+{
+	"abstract" : true,
+	"backtrace" : 4,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_library",
+			"_juce_add_interface_library",
+			"juce_add_module",
+			"juce_add_modules",
+			"target_link_libraries"
+		],
+		"files" : 
+		[
+			"JUCE/extras/Build/CMake/JUCEModuleSupport.cmake",
+			"JUCE/modules/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 33,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 686,
+				"parent" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 505,
+				"parent" : 2
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 98,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 659,
+				"parent" : 2
+			}
+		]
+	},
+	"codemodelVersion" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	},
+	"id" : "juce_audio_formats::@fa2799be4f27ec528a31",
+	"interfaceCompileDependencies" : 
+	[
+		{
+			"backtrace" : 5,
+			"id" : "juce_audio_basics::@fa2799be4f27ec528a31"
+		}
+	],
+	"interfaceLinkLibraries" : 
+	[
+		{
+			"backtrace" : 5,
+			"id" : "juce_audio_basics::@fa2799be4f27ec528a31"
+		}
+	],
+	"name" : "juce_audio_formats",
+	"paths" : 
+	{
+		"build" : "JUCE/modules",
+		"source" : "JUCE/modules"
+	},
+	"sources" : [],
+	"type" : "INTERFACE_LIBRARY"
+}

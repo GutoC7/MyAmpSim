@@ -1,37 +1,45 @@
-# My Amp Sim 🎸
+# 🎸 My Amp Sim (V1.0)
+**A high-performance, hardware-accelerated Guitar Amp & Multi-FX Simulator built in C++ and JUCE.**
 
-A real-time, low-latency Guitar Amplifier Simulator and Multi-Effects suite built in C++ using the JUCE Framework. 
+![C++](https://img.shields.io/badge/C++-17-blue.svg)
+![JUCE](https://img.shields.io/badge/JUCE-8.0-darkorange.svg)
+![CMake](https://img.shields.io/badge/CMake-3.20+-green.svg)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20VST3%20%7C%20Standalone-lightgrey.svg)
 
-I developed this project to bridge the gap between Computer Science and Music (also to learn more and keep my coding skills sharp), diving deep into Digital Signal Processing (DSP) to build an architecture-grade audio plugin from scratch.
+## 📌 Overview
+Developed as a deep dive into Digital Signal Processing (DSP) and real-time audio architecture, **My Amp Sim** is a fully functional, zero-latency virtual guitar rig. It features a completely dynamic 20-slot routing matrix, multi-threaded audio visualization, and a suite of mathematically modeled effects ranging from 4x oversampled tube distortion to AMDF-tracked polyphonic synthesizers.
 
-## 🎛️ Features
+![UI Screenshot](Assets/ui_screenshot.png)
 
-* **Tube Distortion Engine:** Custom waveshaping using hyperbolic tangent (`tanh`) for warm, analog-style soft clipping.
-* **Convolution Cabinet Simulator:** Integrated Impulse Response (IR) loader powered by the JUCE DSP module to replicate the frequency response of a physical 12" speaker cabinet.
-* **LFO Tremolo:** Sine-wave driven volume modulation.
-* **Tape Echo (Delay):** Custom-built Circular Buffer implementation for delay lines, featuring linear-interpolated parameter smoothing to eliminate "zipper" artifacts during real-time manipulation.
-* **Standalone & VST3:** Runs as a standalone application for live playing or as a VST3 plugin inside any major DAW (Ableton, Reaper, Logic, etc.).
+## ✨ Core Features
+* **Dynamic Routing Matrix:** A drag-and-drop 20-pedal architecture allowing for infinite signal chain combinations.
+* **Real-Time Visualizer (Lock-Free FIFO):** A dual-screen 60fps GUI block featuring a time-domain oscilloscope and an FFT-driven frequency spectrum analyzer, safely bridged from the Audio Thread to the Message Thread via a custom lock-free ring buffer.
+* **Advanced DSP Math:** * **Distortion:** 4x Oversampled hyperbolic tangent (`std::tanh`) wave shaping for aliasing-free tube and fuzz emulation.
+  * **Pitch Tracking:** Implements the Average Magnitude Difference Function (AMDF) for highly accurate, low-latency fundamental frequency detection in the Guitar Synthesizer and Tuner.
+  * **Modulation:** Analog-modeled "Bucket Brigade" (BBD) Chorus utilizing custom IIR low-pass warmth filters.
+* **Hardware MIDI Integration:** A real-time "MIDI Learn" CC parser, allowing users to instantly bind physical expression pedals or MIDI hardware to any UI parameter.
+* **Automated Asset Pipeline:** Factory Cabinet Impulse Responses (`.wav`) and application binaries (`.png` icons) are dynamically detected by CMake and natively embedded into the binary using JUCE's `BinaryData`, eliminating the need for external file management.
+* **The Tone Vault:** A first-boot XML factory system that automatically installs 75+ historically accurate presets mimicking legendary rigs (Vai, EVH, Malmsteen, Metallica).
 
 ## 🛠️ Tech Stack & Architecture
-
-* **Language:** C++17/20
-* **Framework:** [JUCE](https://juce.com/)
+* **Language:** C++17
+* **Framework:** JUCE (Audio Plugin Framework & GUI)
 * **Build System:** CMake
-* **DSP Concepts Implemented:** 
-  * Separation of Concerns (Stateless processing functions vs. Stateful objects)
-  * Memory Management (Real-time safe circular buffers, pre-allocation to prevent audio dropouts)
-  * Atomic Variables for thread-safe GUI-to-Audio communication
-  * Parameter Smoothing (One-pole low-pass filtering on control signals)
+* **Threading:** Strict separation of DSP (`processBlock`) and UI (`Message Thread`) using `std::atomic` variables and lock-free FIFOs to guarantee zero audio dropouts.
 
-## 🚀 Build Instructions (Windows)
+## 👨‍💻 About the Developer
+Developed by Augusto (Guto), a Computer Science student currently in his final year at FC-UNESP. This project serves as the foundational C++ architecture for an upcoming Course Completion Project (TCC) focused on real-time musical harmony analysis, combining advanced Fourier transforms with Machine Learning models.
 
-### Prerequisites
-1. **Visual Studio 2022** with the **"Desktop development with C++"** workload installed.
-2. Ensure **"C++ CMake tools for Windows"** is checked in the Visual Studio Installer.
-3. [CMake](https://cmake.org/download/) installed and added to your system PATH.
+## 🚀 Build & Deployment Instructions
+This project utilizes a modern CMake pipeline. To build the highly optimized VST3 and Standalone formats:
 
-### Compiling from Source
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/GutoC7/MyAmpSim.git](https://github.com/GutoC7/MyAmpSim.git)
-   cd MyAmpSim
+1. Clone the repository and ensure you have CMake and MSVC (Visual Studio) installed.
+2. Generate the build files and compile in **Release mode** to activate `-O3` optimizations:
+```bash
+mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+3. Locate the Binaries: The compiled files will be automatically placed in out/build/x64-Release/MyAmpSim_artefacts/
+	Run the Standalone .exe directly, or copy the .vst3 file into C:\Program Files\Common Files\VST3 to use it in your DAW.
+

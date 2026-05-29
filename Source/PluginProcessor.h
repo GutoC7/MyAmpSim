@@ -9,7 +9,7 @@
 class MyAmpSimAudioProcessor : public juce::AudioProcessor
 {
 public:
-    GuitarTuner tuner;
+    PitchTracker tuner;
     std::atomic<float> currentPitchHz{ 0.0f }; // So the GUI can read it
     std::atomic<float> midiPitchHz{ 0.0f };   // Tracks the MIDI keyboard
     std::atomic<float> outputPeak{ 0.0f }; // Tracks the master output volume

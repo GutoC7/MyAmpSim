@@ -1,0 +1,19 @@
+# ninja log v7
+40	121	8017836651391414	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/tools/CMakeFiles/cmake.verify_globs	a1d0f720f452bd4d
+172	250	8017817554641878	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core_CompilationTime.cpp.obj	f5df8db02c67da5a
+154	672	8017817554461891	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Sheenbidi.c.obj	b3d01f3882d9cb50
+179	2670	8017817554711894	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_data_structures/juce_data_structures.cpp.obj	8e8791ec83792d5f
+160	3804	8017817554521886	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_events/juce_events.cpp.obj	bcbc7e5b28feae41
+124	4563	8017817554161862	extras/Build/juceaide/CMakeFiles/juceaide.dir/Main.cpp.obj	70bd4eb2aa0acf44
+130	4793	8017817554221873	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/juce_build_tools/juce_build_tools.cpp.obj	2ddf6c11e73e3859
+166	9717	8017817554581893	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_core/juce_core.cpp.obj	52a1f33ffbd3c51
+142	20112	8017817554331890	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics.cpp.obj	be9d2d7de21d9064
+147	21984	8017817554391883	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_graphics/juce_graphics_Harfbuzz.cpp.obj	56162328d1863867
+136	31353	8017817554281887	extras/Build/juceaide/CMakeFiles/juceaide.dir/__/__/__/modules/juce_gui_basics/juce_gui_basics.cpp.obj	160f62e9c93d64be
+31354	32005	8017817866460206	extras/Build/juceaide/juceaide_artefacts/Custom/juceaide.exe	a7047a613326ebfb
+116	449	8017841613375056	build.ninja	681c2b4026ccb35b
+116	449	8017841613174039	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/tools/cmake_install.cmake	681c2b4026ccb35b
+116	449	8017841613194025	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/tools/modules/cmake_install.cmake	681c2b4026ccb35b
+116	449	8017841613214030	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/tools/extras/Build/cmake_install.cmake	681c2b4026ccb35b
+116	449	8017841613294369	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/tools/extras/Build/juceaide/cmake_install.cmake	681c2b4026ccb35b
+29	109	8017841614285951	C:/Users/augus/Documents/GitHub/MyAmpSim/out/build/x64-Release/JUCE/tools/CMakeFiles/cmake.verify_globs	a1d0f720f452bd4d

@@ -20,17 +20,19 @@ else()
 endif()
 
 juce_add_plugin(MyAmpSim
-    COMPANY_NAME "GutoC7"
+    COMPANY_NAME "GutoC7 DSP"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
     IS_MIDI_EFFECT TRUE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD TRUE
-    PLUGIN_MANUFACTURER_CODE "GC7"
+    PLUGIN_MANUFACTURER_CODE "GTC7"
     PLUGIN_CODE "Amps"
     FORMATS VST3 Standalone
-    PRODUCT_NAME "My Amp Sim")
+    PRODUCT_NAME "My Amp Sim"
+    ICON_BIG "Resources/icon.png"
+)
 
 # link C++ file
 target_sources(MyAmpSim PRIVATE

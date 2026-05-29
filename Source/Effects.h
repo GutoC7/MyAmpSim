@@ -252,7 +252,7 @@ private:
     std::atomic<float>* roomSize, * damping, * wetMix;
 };
 
-// --- PEDAL 6: CHORUS ---
+// --- PEDAL 6: CHORUS (Analog BBD Emulation) ---
 class ChorusPedal : public AudioEffect
 {
 public:
@@ -262,32 +262,54 @@ public:
 
     void prepare(double sampleRate, int samplesPerBlock) override
     {
-        juce::dsp::ProcessSpec spec;
-        spec.sampleRate = sampleRate;
-        spec.maximumBlockSize = samplesPerBlock;
-        spec.numChannels = 2;
+        juce::dsp::ProcessSpec spec{ sampleRate, static_cast<juce::uint32>(samplesPerBlock), 2 };
+
         chorus.prepare(spec);
+        warmthFilter.prepare(spec);
+
+        // Analog Emulation: Roll off the harsh digital highs on the wet chorus signal
+        *warmthFilter.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(sampleRate, 3000.0f, 0.707f);
     }
 
     void process(juce::AudioBuffer<float>& buffer) override
     {
         if (isBypassed && isBypassed->load() > 0.5f) return;
-        
+
         chorus.setRate(rate->load());
         chorus.setDepth(depth->load());
         chorus.setMix(mix->load());
-        chorus.setCentreDelay(7.0f); // 7ms is the sweet spot for Chorus
+        chorus.setCentreDelay(15.0f); // 15ms is the classic Boss CE-2 sweet spot
         chorus.setFeedback(0.0f);
 
+        // 1. Create a copy of the dry signal
+        juce::AudioBuffer<float> dryBuffer;
+        dryBuffer.makeCopyOf(buffer);
+
+        // 2. Process the main buffer through the Chorus
         juce::dsp::AudioBlock<float> block(buffer);
         juce::dsp::ProcessContextReplacing<float> context(block);
         chorus.process(context);
+
+        // 3. Process the chorused audio through the Analog Warmth Filter
+        warmthFilter.process(context);
+
+        // 4. Mix the warm, dark chorus back in with the pristine dry signal
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel) {
+            auto* outData = buffer.getWritePointer(channel);
+            const auto* dryData = dryBuffer.getReadPointer(channel);
+
+            for (int i = 0; i < buffer.getNumSamples(); ++i) {
+                // The "Mix" knob balances the pristine dry signal with the warm chorused signal
+                outData[i] = (dryData[i] * 0.5f) + (outData[i] * 0.5f);
+            }
+        }
     }
 
     juce::String getName() const override { return "Chorus"; }
 
 private:
     juce::dsp::Chorus<float> chorus;
+    juce::dsp::ProcessorDuplicator<juce::dsp::IIR::Filter<float>, juce::dsp::IIR::Coefficients<float>> warmthFilter;
     std::atomic<float>* rate, * depth, * mix;
 };
 
