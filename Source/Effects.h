@@ -99,6 +99,13 @@ public:
         // Trims silence and normalizes the IR automatically
         convolution.loadImpulseResponse(file, juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::yes, 0);
     }
+    
+    // Load IR directly from compiled RAM
+    void loadImpulseResponseFromMemory(const void* sourceData, size_t sourceDataSize)
+    {
+        convolution.loadImpulseResponse(sourceData, sourceDataSize,
+            juce::dsp::Convolution::Stereo::yes, juce::dsp::Convolution::Trim::yes, 0);
+    }
 
     juce::String getName() const override { return "Cab"; }
 

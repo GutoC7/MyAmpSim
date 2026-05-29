@@ -216,16 +216,16 @@ private:
 class CabinetUIBlock : public juce::Component
 {
 public:
-    CabinetUIBlock(std::function<void(const juce::File&)> onLoadFile)
-        : loadCallback(onLoadFile)
+    CabinetUIBlock(std::function<void(const juce::File&)> onLoadFile, std::function<void(int)> onSelectFactory)
+        : loadCallback(onLoadFile), factoryCallback(onSelectFactory)
     {
+        // 1. The Custom User File Button
         addAndMakeVisible(btnLoadIR);
-        btnLoadIR.setButtonText("LOAD .WAV IMPULSE");
+        btnLoadIR.setButtonText("LOAD CUSTOM .WAV");
         btnLoadIR.setColour(juce::TextButton::buttonColourId, juce::Colours::darkorange);
 
         btnLoadIR.onClick = [this] {
             fileChooser = std::make_unique<juce::FileChooser>("Select IR (.wav)", juce::File::getSpecialLocation(juce::File::userDesktopDirectory), "*.wav");
-
             fileChooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
                 [this](const juce::FileChooser& fc) {
                     if (fc.getResult().existsAsFile()) {
@@ -235,6 +235,25 @@ public:
                     }
                 });
             };
+
+        // 2. The Built-in Factory Dropdown
+        addAndMakeVisible(factorySelector);
+        factorySelector.setTextWhenNothingSelected("Select Factory Cabinet...");
+
+        // DYNAMIC UI: Automatically populate the menu using the embedded filenames
+        for (int i = 0; i < BinaryData::namedResourceListSize; ++i) {
+            // JUCE ComboBox IDs must start at 1, so we use i + 1
+            factorySelector.addItem(BinaryData::originalFilenames[i], i + 1);
+        }
+
+        factorySelector.onChange = [this] {
+            // Convert the ComboBox ID (starts at 1) back to the Array Index (starts at 0)
+            int selectedIndex = factorySelector.getSelectedId() - 1;
+
+            if (factoryCallback) factoryCallback(selectedIndex);
+            irName = "Factory: " + factorySelector.getText();
+            repaint();
+            };
     }
 
     void paint(juce::Graphics& g) override
@@ -243,8 +262,7 @@ public:
         g.setColour(juce::Colours::black.withAlpha(0.6f));
         g.fillRoundedRectangle(area.translated(4, 5).toFloat(), 10.0f);
 
-        juce::ColourGradient pedalGrad(juce::Colour(60, 65, 70), 0, 0,
-            juce::Colour(20, 22, 25), 0, (float)area.getHeight(), false);
+        juce::ColourGradient pedalGrad(juce::Colour(60, 65, 70), 0, 0, juce::Colour(20, 22, 25), 0, (float)area.getHeight(), false);
         g.setGradientFill(pedalGrad);
         g.fillRoundedRectangle(area.toFloat(), 10.0f);
         g.setColour(juce::Colours::grey.withAlpha(0.3f));
@@ -261,14 +279,17 @@ public:
 
     void resized() override
     {
-        btnLoadIR.setBounds(400, 45, 160, 40);
+        factorySelector.setBounds(20, 100, 250, 30);
+        btnLoadIR.setBounds(400, 95, 160, 40);
     }
 
 private:
     juce::TextButton btnLoadIR;
+    juce::ComboBox factorySelector;
     juce::String irName;
     std::unique_ptr<juce::FileChooser> fileChooser;
     std::function<void(const juce::File&)> loadCallback;
+    std::function<void(int)> factoryCallback;
 };
 
 // CUSTOM LOOPER UI BLOCK

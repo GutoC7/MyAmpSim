@@ -72,6 +72,28 @@ public:
         }
     }
 
+    // Safely loads a built-in factory IR from RAM using its dynamic index
+    void loadBuiltInIR(int index)
+    {
+        // 1. Ensure the requested index actually exists in memory
+        if (index < 0 || index >= BinaryData::namedResourceListSize) return;
+
+        // 2. Fetch the memory block directly from the BinaryData array
+        int dataSizeInBytes = 0;
+        const char* resourceData = BinaryData::getNamedResource(BinaryData::namedResourceList[index], dataSizeInBytes);
+
+        if (resourceData != nullptr) {
+            for (auto& pedal : pedalboard) {
+                if (pedal->getName() == "Cab") {
+                    if (auto* cab = dynamic_cast<CabinetPedal*>(pedal.get())) {
+                        cab->loadImpulseResponseFromMemory(resourceData, static_cast<size_t>(dataSizeInBytes));
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
     // THE CENTRAL DATABASE
     juce::AudioProcessorValueTreeState apvts;
     juce::File presetDirectory;

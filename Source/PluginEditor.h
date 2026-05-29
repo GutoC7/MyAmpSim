@@ -218,9 +218,10 @@ public:
         pedalBlocks.add(new EqUIBlock(p)); // Passes the DSP Audio Engine reference for FFT processing
         pedalBlocks.add(new PedalUIBlock(p, { "ps_semi", "ps_mix" }));
         pedalBlocks.add(new PedalUIBlock(p, { "oct_semi", "oct_mix" }));
-        pedalBlocks.add(new CabinetUIBlock([this](const juce::File& file) {
-            audioProcessor.loadCabinetIR(file);
-            }));
+        pedalBlocks.add(new CabinetUIBlock(
+            [this](const juce::File& file) { audioProcessor.loadCabinetIR(file); }, // Custom IR lambda
+            [this](int index) { audioProcessor.loadBuiltInIR(index); }             // Factory IR lambda
+        ));
         pedalBlocks.add(new PedalUIBlock(p, { "wah_rate", "wah_depth", "wah_q" }));
         pedalBlocks.add(new PedalUIBlock(p, { "phs_rate", "phs_depth", "phs_freq", "phs_feed" }));
         pedalBlocks.add(new PedalUIBlock(p, { "flg_rate", "flg_depth", "flg_feed" }));

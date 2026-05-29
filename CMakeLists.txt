@@ -4,18 +4,27 @@ project(MyAmpSim VERSION 0.0.1)
 
 add_subdirectory(JUCE)
 
-juce_add_binary_data(MyAmpSim_Assets
-    HEADER_NAME "BinaryData.h"
-    NAMESPACE "BinaryData"
-    SOURCES
-        "${CMAKE_CURRENT_SOURCE_DIR}/Assets/cabinet.wav") # inserts the impulse response file into the executable as binary data
+# --- AUTO-DETECT AND EMBED FACTORY IMPULSE RESPONSES ---
+# Use the absolute path to guarantee CMake looks in the correct folder
+file(GLOB IR_WAV_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/Assets/*.wav")
+
+if(IR_WAV_FILES)
+    juce_add_binary_data(MyAmpSimBinaryData
+        HEADER_NAME "BinaryData.h"
+        NAMESPACE BinaryData
+        SOURCES ${IR_WAV_FILES}
+    )
+else()
+    # Throw a clear error if the folder is empty or missing
+    message(FATAL_ERROR "CRITICAL: No .wav files were found in ${CMAKE_CURRENT_SOURCE_DIR}/Assets/")
+endif()
 
 juce_add_plugin(MyAmpSim
     COMPANY_NAME "GutoC7"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
-    IS_MIDI_EFFECT FALSE
+    IS_MIDI_EFFECT TRUE
     EDITOR_WANTS_KEYBOARD_FOCUS TRUE
     COPY_PLUGIN_AFTER_BUILD TRUE
     PLUGIN_MANUFACTURER_CODE "GC7"
@@ -31,7 +40,10 @@ target_sources(MyAmpSim PRIVATE
 target_link_libraries(MyAmpSim PRIVATE
     juce::juce_audio_utils
     juce::juce_gui_basics
-    juce::juce_dsp # required for the Convolution Cab Sim
-    MyAmpSim_Assets) 
+    juce::juce_dsp 
+    #juce::juce::juce_recommended_config_flags
+    #juce::juce::juce_recommended_lto_flags
+    #juce::juce::juce_recommended_warning_flags
+    MyAmpSimBinaryData) 
 
 juce_generate_juce_header(MyAmpSim)
